@@ -1,11 +1,24 @@
 import React, { useState, useEffect } from "react";
-import { Slide, SlideType, ThemeName } from "./types";
+import { motion } from "motion/react";
+import { Slide, SlideType, ThemeName, UserProfile, SavedProject } from "./types";
 import { THEMES } from "./utils/themes";
 import { ReportCanvas } from "./components/ReportCanvas";
 import { SlideList } from "./components/SlideList";
 import { ThemeSelector } from "./components/ThemeSelector";
+import { TemplateGallery } from "./components/TemplateGallery";
+import { ReportTemplate } from "./utils/templates";
 import { SlideEditor } from "./components/SlideEditor";
-import { Sparkles, Music, Trash2, Heart, HelpCircle, FileAudio, Save, FolderOpen, FileDown, UploadCloud } from "lucide-react";
+import { SaaSModals } from "./components/SaaSModals";
+import { AppLogo } from "./components/AppLogo";
+import { 
+  Sparkles, Music, Trash2, Heart, HelpCircle, FileAudio, Save, 
+  FolderOpen, FileDown, UploadCloud, User, LogIn, Database, Crown 
+} from "lucide-react";
+import { 
+  saveProjectToCloud, 
+  fetchUserProjectsFromCloud, 
+  deleteProjectFromCloud 
+} from "./lib/firebase";
 
 // Generate unique ID
 const generateId = () => "s" + Math.random().toString(36).substring(2, 9) + "_" + Date.now();
@@ -108,10 +121,148 @@ const INITIAL_SLIDES: Slide[] = [
   },
 ];
 
+const BORDER_REPORT_SLIDES: Slide[] = [
+  {
+    id: "p2_intro",
+    type: "intro",
+    duration: 6,
+    ministryName: "وزارة الاقتصاد الوطني — الإدارة العامة للمعابر والمنافذ",
+    mainTitle: "حركة التبادل التجاري وتدفق السلع والواردات",
+    monthBadge: "آب ٢٠٢٦",
+    emblemText: "MNE",
+    logoSize: 100,
+    logoOpacity: 1,
+    logoAnimation: "zoomIn",
+    glowIntensity: 0.7,
+    titleSize: 44,
+    titleOpacity: 1,
+  },
+  {
+    id: "p2_section1",
+    type: "section",
+    duration: 5,
+    stageNumber: "٠١",
+    stageTitle: "تأمين السلع وحركة الشاحنات التجارية",
+    stageSubtitle: "تقرير شامل لحركة مرور شاحنات الإمداد والمساعدات عبر معابر المحافظات الجنوبية",
+    titleSize: 40,
+    subtitleOpacity: 0.9,
+  },
+  {
+    id: "p2_event1",
+    type: "event",
+    duration: 7,
+    catLabel: "تسهيل الاستيراد والتصدير",
+    title: "تخليص وتمريد ٢٥٠+ شاحنة محملة بالدقيق والقمح والمواد الأساسية",
+    location: "معبر كرم أبو سالم التجاري",
+    day: "١٤",
+    month: "آب",
+    mediaList: [],
+    transition: "fade",
+    kenBurnsEnabled: true,
+    kenBurnsIntensity: 0.07,
+    textSize: 28,
+    textOpacity: 1,
+  },
+  {
+    id: "p2_closing",
+    type: "closing",
+    duration: 8,
+    heading: "المؤشرات الكلية لحركة المعابر للسلع الأساسية",
+    ministryName: "وزارة الاقتصاد الوطني — الإدارة العامة للاتصال والإعلام",
+    stats: [
+      { n: "٢٥٠+", l: "شاحنة دقيق وقمح مخلصة" },
+      { n: "٤٥", l: "منشأة تجارية مستفيدة" },
+      { n: "٩٢٪", l: "نسبة الاكتفاء من الحبوب" },
+    ],
+    headingSize: 32,
+    statsSize: 46,
+    statsOpacity: 1,
+    statsStyle: "grid"
+  },
+];
+
 export default function App() {
   const [slides, setSlides] = useState<Slide[]>(INITIAL_SLIDES);
   const [activeIndex, setActiveIndex] = useState(0);
   const [currentTheme, setCurrentTheme] = useState<ThemeName>("emerald");
+  
+  // Template Gallery state
+  const [activeTemplateId, setActiveTemplateId] = useState<string | null>("royal-emerald");
+  const [fontDisplay, setFontDisplay] = useState<string>("Cairo");
+  const [fontBody, setFontBody] = useState<string>("Tajawal");
+
+  const handleSelectTemplate = (template: ReportTemplate) => {
+    setActiveTemplateId(template.id);
+    setCurrentTheme(template.theme);
+    setFontDisplay(template.fontDisplay);
+    setFontBody(template.fontBody);
+  };
+
+  // SaaS User Profile state
+  const [user, setUser] = useState<UserProfile>(() => {
+    try {
+      const saved = localStorage.getItem("hema_saas_user");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    return {
+      uid: "guest_user",
+      email: "demo-user@hemagraphic.ps",
+      displayName: "مستخدم تجريبي",
+      plan: 'pro',
+      exportQuotaLimit: 9999,
+      exportQuotaCurrent: 0,
+      watermarkCustomAllowed: true,
+      videoDurationLimit: 600,
+    };
+  });
+
+  // SaaS saved projects state with premium pre-populated Ministry templates
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>(() => {
+    try {
+      const saved = localStorage.getItem("hema_saas_projects");
+      if (saved) return JSON.parse(saved);
+    } catch (e) {
+      console.error(e);
+    }
+    
+    // Default pre-populated ministry templates for pristine SaaS feeling
+    const defaultProjects: SavedProject[] = [
+      {
+        id: "proj_mne_july",
+        name: "تقرير تموز ٢٠٢٦ — وزارة الاقتصاد الوطني",
+        slides: INITIAL_SLIDES,
+        theme: "emerald",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      },
+      {
+        id: "proj_mne_crossing",
+        name: "تقرير حركة المعابر والتبادل التجاري — آب ٢٠٢٦",
+        slides: BORDER_REPORT_SLIDES,
+        theme: "navy",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      }
+    ];
+    localStorage.setItem("hema_saas_projects", JSON.stringify(defaultProjects));
+    return defaultProjects;
+  });
+
+  // Modal triggers
+  const [showUpgrade, setShowUpgrade] = useState(false);
+  const [showProjects, setShowProjects] = useState(false);
+  const [showAuth, setShowAuth] = useState(false);
+
+  // Auto-sync saved projects to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem("hema_saas_projects", JSON.stringify(savedProjects));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [savedProjects]);
   
   // Media library state with localStorage persistence
   const [mediaLibrary, setMediaLibrary] = useState<{ src: string; type: "image" | "video"; name?: string }[]>(() => {
@@ -332,10 +483,103 @@ export default function App() {
     }
   };
 
+  // Auto-sync database projects when logged in via Firebase
+  useEffect(() => {
+    if (user.uid && user.uid !== "guest_user") {
+      const loadCloudProjects = async () => {
+        try {
+          const cloudProjs = await fetchUserProjectsFromCloud(user.uid);
+          if (cloudProjs && cloudProjs.length > 0) {
+            setSavedProjects(cloudProjs);
+          }
+        } catch (err) {
+          console.error("Error loading cloud projects:", err);
+        }
+      };
+      loadCloudProjects();
+    }
+  }, [user.uid]);
+
+  // SaaS Cloud Project Save & Load Handlers
+  const handleLoadSaaSProject = (project: SavedProject) => {
+    setSlides(project.slides);
+    if (project.theme) {
+      setCurrentTheme(project.theme);
+    }
+    if (project.fontDisplay) {
+      setFontDisplay(project.fontDisplay);
+    } else {
+      setFontDisplay("Cairo");
+    }
+    if (project.fontBody) {
+      setFontBody(project.fontBody);
+    } else {
+      setFontBody("Tajawal");
+    }
+    if (project.activeTemplateId !== undefined) {
+      setActiveTemplateId(project.activeTemplateId);
+    } else {
+      setActiveTemplateId(null);
+    }
+    setActiveIndex(0);
+    alert(`تم تحميل التقرير السحابي بنجاح: "${project.name}"`);
+  };
+
+  const handleSaveSaaSProject = async (name: string) => {
+    const projectId = "proj_" + Math.random().toString(36).substring(2, 9);
+    const newProj: SavedProject = {
+      id: projectId,
+      name: name,
+      slides: slides,
+      theme: currentTheme,
+      fontDisplay: fontDisplay,
+      fontBody: fontBody,
+      activeTemplateId: activeTemplateId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    
+    setSavedProjects((prev) => [newProj, ...prev]);
+
+    if (user.uid !== "guest_user") {
+      try {
+        await saveProjectToCloud(
+          user.uid,
+          projectId,
+          name,
+          slides,
+          currentTheme,
+          fontDisplay,
+          fontBody,
+          activeTemplateId
+        );
+      } catch (err) {
+        console.error("Failed to save project to Firestore cloud:", err);
+      }
+    }
+    
+    alert(`تم حفظ التقرير السحابي بنجاح بمستودع SaaS الخاص بك باسم: \n"${name}"`);
+  };
+
+  const handleDeleteSaaSProject = async (id: string) => {
+    setSavedProjects((prev) => prev.filter((p) => p.id !== id));
+    
+    if (user.uid !== "guest_user") {
+      try {
+        await deleteProjectFromCloud(id);
+      } catch (err) {
+        console.error("Failed to delete project from Firestore cloud:", err);
+      }
+    }
+  };
+
   // Project Save & Load Handlers (JSON)
   const handleExportProject = () => {
     const projectData = {
       theme: currentTheme,
+      fontDisplay,
+      fontBody,
+      activeTemplateId,
       slides,
       globalAudio,
       watermarkSettings,
@@ -362,6 +606,21 @@ export default function App() {
           setSlides(parsed.slides);
           if (parsed.theme) {
             setCurrentTheme(parsed.theme);
+          }
+          if (parsed.fontDisplay) {
+            setFontDisplay(parsed.fontDisplay);
+          } else {
+            setFontDisplay("Cairo");
+          }
+          if (parsed.fontBody) {
+            setFontBody(parsed.fontBody);
+          } else {
+            setFontBody("Tajawal");
+          }
+          if (parsed.activeTemplateId !== undefined) {
+            setActiveTemplateId(parsed.activeTemplateId);
+          } else {
+            setActiveTemplateId(null);
           }
           if (parsed.globalAudio) {
             setGlobalAudio(parsed.globalAudio);
@@ -413,27 +672,66 @@ export default function App() {
       {/* Dynamic Luxury Navigation header */}
       <header className="border-b border-[#C9A227]/20 px-6 py-4 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-[#152820] to-transparent">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#C9A227] flex items-center justify-center text-[#0A2C21] font-bold text-xl select-none shadow-md">
-            HE
-          </div>
+          <AppLogo size={42} />
           <div>
             <div className="text-[11px] font-mono tracking-wider text-[#C9A227] font-bold uppercase">
               HEMA GRAPHIC — ADVANCED VIDEO ENGINE
             </div>
             <h1 className="font-display font-black text-lg md:text-xl text-white">
-              صانع التقرير الشهري المصوّر والمتحرك
+              صانع التقارير <span className="text-[10px] bg-amber-500/10 text-[#E4C766] border border-[#C9A227]/25 px-2 py-0.5 rounded-full mr-2">SaaS Cloud v2</span>
             </h1>
           </div>
         </div>
 
-        {/* Global info telemetry bar */}
-        <div className="flex items-center gap-4 bg-[#152820]/80 border border-amber-500/10 px-4 py-2 rounded-xl text-xs">
-          <div>
-            الشرائح: <span className="text-[#E4C766] font-bold font-mono">{slides.length}</span>
+        {/* Global info and SaaS management console */}
+        <div className="flex items-center flex-wrap gap-3">
+          {/* A. Saved Projects Button */}
+          <button
+            onClick={() => setShowProjects(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-[#0e1f18] hover:bg-[#152820] border border-amber-500/15 hover:border-[#C9A227] text-gray-200 hover:text-white text-xs font-bold transition cursor-pointer"
+            title="إدارة المشاريع السحابية"
+          >
+            <Database className="w-3.5 h-3.5 text-[#C9A227]" />
+            <span>المستودع السحابي ({savedProjects.length})</span>
+          </button>
+
+          {/* B. Subscription/Quota Badge */}
+          <div 
+            onClick={() => setShowUpgrade(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black cursor-pointer border bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-950/60 transition"
+            title="الحساب مفعل بالكامل بالباقة الاحترافية مجاناً"
+          >
+            <Crown className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span>الباقة الاحترافية غير المحدودة ⚡</span>
           </div>
-          <div className="w-px h-4 bg-amber-500/10" />
-          <div>
-            إجمالي مدة الفيديو: <span className="text-[#E4C766] font-bold font-mono">{totalDuration.toFixed(1)}s</span>
+
+          {/* C. User Auth status */}
+          {user.uid === "guest_user" ? (
+            <button
+              onClick={() => setShowAuth(true)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-950/50 hover:bg-emerald-950 border border-emerald-900/40 text-gray-300 hover:text-[#E4C766] text-xs font-bold transition cursor-pointer"
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span>تسجيل الدخول السحابي</span>
+            </button>
+          ) : (
+            <div className="flex items-center gap-2 bg-[#0e1f18] border border-amber-500/10 px-3 py-1.5 rounded-xl text-xs">
+              <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-gray-300 font-bold">{user.displayName}</span>
+            </div>
+          )}
+
+          <div className="w-px h-6 bg-amber-500/10" />
+
+          {/* D. Telemetry Info */}
+          <div className="flex items-center gap-4 bg-[#152820]/80 border border-amber-500/10 px-4 py-2 rounded-xl text-xs">
+            <div>
+              الشرائح: <span className="text-[#E4C766] font-bold font-mono">{slides.length}</span>
+            </div>
+            <div className="w-px h-4 bg-amber-500/10" />
+            <div>
+              مدة الفيديو: <span className="text-[#E4C766] font-bold font-mono">{totalDuration.toFixed(1)}s</span>
+            </div>
           </div>
         </div>
       </header>
@@ -441,7 +739,12 @@ export default function App() {
       {/* Main workspace container */}
       <main className="flex-1 max-w-[1440px] w-full mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* LEFT COLUMN: Slide timeline list and template picking (3 cols) */}
-        <div className="lg:col-span-3 flex flex-col gap-6 w-full">
+        <motion.div 
+          initial={{ opacity: 0, x: 25 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut", delay: 0.15 }}
+          className="lg:col-span-3 flex flex-col gap-6 w-full"
+        >
           <SlideList
             slides={slides}
             activeIndex={activeIndex}
@@ -452,9 +755,17 @@ export default function App() {
             onMoveSlide={handleMoveSlide}
           />
 
+          <TemplateGallery
+            activeTemplateId={activeTemplateId}
+            onSelectTemplate={handleSelectTemplate}
+          />
+
           <ThemeSelector
             currentTheme={currentTheme}
-            onThemeChange={setCurrentTheme}
+            onThemeChange={(themeName) => {
+              setCurrentTheme(themeName);
+              setActiveTemplateId(null);
+            }}
           />
 
           {/* Project File Management Card */}
@@ -491,13 +802,22 @@ export default function App() {
               </label>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* CENTER COLUMN: Live canvas preview player, music upload, instructions (5 cols) */}
-        <div className="lg:col-span-5 flex flex-col gap-6 items-center w-full">
+        <motion.div 
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="lg:col-span-5 flex flex-col gap-6 items-center w-full"
+        >
           <ReportCanvas
             slides={slides}
-            theme={THEMES[currentTheme]}
+            theme={{
+              ...THEMES[currentTheme],
+              fontDisplay: fontDisplay,
+              fontBody: fontBody
+            }}
             activeSlideIndex={activeIndex}
             onActiveSlideChange={setActiveIndex}
             globalAudio={globalAudio}
@@ -519,21 +839,28 @@ export default function App() {
               <li>الفيديو النهائي يتم تنزيله بصيغة <b className="text-gray-200 font-semibold">WebM</b> عالية الدقة (720p). يمكنك نقله مباشرة إلى CapCut أو Premiere لإضافة فلاتر إضافية وتصديره MP4 نهائي إن لزم.</li>
             </ul>
           </div>
-        </div>
+        </motion.div>
 
         {/* RIGHT COLUMN: Slide editor (4 cols) */}
         <div className="lg:col-span-4 flex flex-col gap-6 w-full">
           {slides[activeIndex] && (
-            <SlideEditor
-              slide={slides[activeIndex]}
-              onUpdateSlide={handleUpdateSlide}
-              onRefineTextRequest={handleRefineTextRequest}
-              onUpdateAllSlides={handleUpdateAllSlides}
-              mediaLibrary={mediaLibrary}
-              onAddToMediaLibrary={handleAddToMediaLibrary}
-              onRemoveFromMediaLibrary={handleRemoveFromMediaLibrary}
-              onClearMediaLibrary={handleClearMediaLibrary}
-            />
+            <motion.div
+              key={activeIndex}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: "easeOut" }}
+            >
+              <SlideEditor
+                slide={slides[activeIndex]}
+                onUpdateSlide={handleUpdateSlide}
+                onRefineTextRequest={handleRefineTextRequest}
+                onUpdateAllSlides={handleUpdateAllSlides}
+                mediaLibrary={mediaLibrary}
+                onAddToMediaLibrary={handleAddToMediaLibrary}
+                onRemoveFromMediaLibrary={handleRemoveFromMediaLibrary}
+                onClearMediaLibrary={handleClearMediaLibrary}
+              />
+            </motion.div>
           )}
         </div>
       </main>
@@ -621,6 +948,21 @@ export default function App() {
           </div>
         )}
       </footer>
+
+      <SaaSModals
+        user={user}
+        setUser={setUser}
+        savedProjects={savedProjects}
+        onLoadProject={handleLoadSaaSProject}
+        onSaveProject={handleSaveSaaSProject}
+        onDeleteProject={handleDeleteSaaSProject}
+        showUpgrade={showUpgrade}
+        setShowUpgrade={setShowUpgrade}
+        showProjects={showProjects}
+        setShowProjects={setShowProjects}
+        showAuth={showAuth}
+        setShowAuth={setShowAuth}
+      />
     </div>
   );
 }

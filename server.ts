@@ -3,11 +3,91 @@ import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI, Type } from "@google/genai";
 import dotenv from "dotenv";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 
 dotenv.config();
 
 async function startServer() {
   const app = express();
+  
+  const isProd = process.env.NODE_ENV === "production";
+
+  if (isProd) {
+    // Tight security headers for production environment
+    app.use(
+      helmet({
+        contentSecurityPolicy: {
+          directives: {
+            defaultSrc: ["'self'"],
+            scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for React/Vite production bundles
+            styleSrc: [
+              "'self'",
+              "'unsafe-inline'",
+              "https://fonts.googleapis.com",
+            ],
+            fontSrc: [
+              "'self'",
+              "https://fonts.gstatic.com",
+              "data:",
+            ],
+            imgSrc: [
+              "'self'",
+              "data:",
+              "blob:",
+              "https://images.unsplash.com",
+              "https://*.googleusercontent.com",
+              "https://*.firebaseusercontent.com",
+              "https://*.firebasestorage.googleapis.com",
+              "https://lh3.googleusercontent.com",
+              "https://firestore.googleapis.com",
+            ],
+            mediaSrc: [
+              "'self'",
+              "data:",
+              "blob:",
+              "https://*",
+              "http://*",
+            ], // For audio & video preview uploads and soundtracks
+            connectSrc: [
+              "'self'",
+              "https://*",
+              "wss://*",
+            ], // For client APIs, Firebase auth/firestore and endpoints
+            frameAncestors: ["'self'"], // Absolute protection against Clickjacking in production!
+          },
+        },
+        crossOriginEmbedderPolicy: false, // Set to false to allow loading external images and audio from remote CDNs
+        frameguard: {
+          action: "deny", // Deny standard iframe inclusion in production
+        },
+      })
+    );
+    console.log("🛡️ [Security] Strict Production Helmet (CSP & Frameguard) Enabled.");
+  } else {
+    // Relaxed security headers during local development and inside AI Studio preview iframe
+    app.use(
+      helmet({
+        contentSecurityPolicy: false,
+        crossOriginEmbedderPolicy: false,
+        frameguard: false,
+      })
+    );
+    console.log("🔓 [Security] Relaxed Development Helmet Active (AI Studio Preview Compatible).");
+  }
+
+  // Rate Limiting on API routes to avoid brute force & Gemini API quota depletion
+  const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 100, // max 100 requests per 15 minutes per IP
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: "لقد تجاوزت حد الطلبات المسموح به. يرجى المحاولة لاحقاً بعد ربع ساعة." }
+  });
+
+  // Apply rate limiting to all API routes
+  app.use("/api/", apiLimiter);
+
   app.use(express.json());
   const PORT = 3000;
 
@@ -133,7 +213,7 @@ async function startServer() {
       res.json(parsedData);
     } catch (error: any) {
       console.error("❌ Error generating AI report:", error);
-      res.status(500).json({ error: error.message || "حدث خطأ أثناء توليد التقرير بالذكاء الاصطناعي." });
+      res.status(500).json({ error: "فشل في توليد التقرير بالذكاء الاصطناعي. يرجى التحقق من المدخلات والمحاولة مرة أخرى لاحقاً." });
     }
   });
 
@@ -173,7 +253,7 @@ async function startServer() {
       res.json({ refinedText: response.text?.trim() || text });
     } catch (error: any) {
       console.error("❌ Error refining text:", error);
-      res.status(500).json({ error: error.message || "حدث خطأ أثناء صياغة النص." });
+      res.status(500).json({ error: "فشل في صياغة وتدقيق النص سحابياً. يرجى المحاولة مرة أخرى لاحقاً." });
     }
   });
 

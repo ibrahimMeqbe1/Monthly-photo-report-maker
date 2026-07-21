@@ -143,7 +143,7 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
   ) => {
     const isRefining = refiningField === fieldKey;
 
-    const handleApplyFormat = (formatType: "bold" | "italic" | "color", colorHex?: string) => {
+    const handleApplyFormat = (formatType: "bold" | "italic" | "color" | "strip", colorHex?: string) => {
       const inputEl = document.getElementById(`input-${fieldKey}`) as HTMLInputElement | null;
       if (!inputEl) return;
 
@@ -152,16 +152,56 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
       const text = inputEl.value;
       const selectedText = text.substring(start, end);
 
-      let formatted = "";
-      if (formatType === "bold") {
-        formatted = `**${selectedText || "نص عريض"}**`;
-      } else if (formatType === "italic") {
-        formatted = `*${selectedText || "نص مائل"}*`;
-      } else if (formatType === "color" && colorHex) {
-        formatted = `<color=${colorHex}>${selectedText || "نص ملون"}</color>`;
-      }
+      let newValue = "";
+      let selectionOffset = 0;
+      let selectionLen = 0;
 
-      const newValue = text.substring(0, start) + formatted + text.substring(end);
+      if (formatType === "strip") {
+        // Strip all formatting codes: <color=...>, </color>, **, *
+        const cleaned = text
+          .replace(/<color=[^>]+>/gi, "")
+          .replace(/<\/color>/gi, "")
+          .replace(/\*\*/g, "")
+          .replace(/\*/g, "");
+        newValue = cleaned;
+        selectionOffset = 0;
+        selectionLen = cleaned.length;
+      } else if (formatType === "color" && colorHex) {
+        if (selectedText.length > 0) {
+          // Check if selected text is already fully wrapped in a color tag
+          const colorTagRegex = /^<color=([^>]+)>([\s\S]*)<\/color>$/i;
+          const match = selectedText.match(colorTagRegex);
+          if (match) {
+            const innerText = match[2];
+            const formatted = `<color=${colorHex}>${innerText}</color>`;
+            newValue = text.substring(0, start) + formatted + text.substring(end);
+            selectionLen = formatted.length;
+          } else {
+            const formatted = `<color=${colorHex}>${selectedText}</color>`;
+            newValue = text.substring(0, start) + formatted + text.substring(end);
+            selectionLen = formatted.length;
+          }
+          selectionOffset = start;
+        } else {
+          // No active selection
+          alert("💡 يرجى تظليل/تحديد الكلمة أو العبارة المراد تلوينها في صندوق النص أولاً، ثم اضغط على اللون لتطبيق التلوين بصرياً!");
+          return;
+        }
+      } else {
+        if (selectedText.length === 0) {
+          alert("💡 يرجى تظليل/تحديد الكلمة أو العبارة المراد جعلها عريضة أو مائلة أولاً!");
+          return;
+        }
+        let formatted = "";
+        if (formatType === "bold") {
+          formatted = `**${selectedText}**`;
+        } else if (formatType === "italic") {
+          formatted = `*${selectedText}*`;
+        }
+        newValue = text.substring(0, start) + formatted + text.substring(end);
+        selectionOffset = start;
+        selectionLen = formatted.length;
+      }
       
       if (onValueChange) {
         onValueChange(newValue);
@@ -172,7 +212,7 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
       // Restore focus and selection
       setTimeout(() => {
         inputEl.focus();
-        inputEl.setSelectionRange(start, start + formatted.length);
+        inputEl.setSelectionRange(selectionOffset, selectionOffset + selectionLen);
       }, 50);
     };
 
@@ -184,12 +224,12 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
           </label>
           
           {/* Elegant Text Formatting Toolbar */}
-          <div className="flex items-center gap-1 bg-[#091410] border border-amber-500/15 px-2 py-0.5 rounded-md shadow-inner">
+          <div className="flex items-center gap-1.5 bg-[#091410] border border-amber-500/15 px-2 py-0.5 rounded-md shadow-inner">
             <button
               type="button"
               onClick={() => handleApplyFormat("bold")}
               className="px-1.5 py-0.5 text-[10px] font-bold text-gray-400 hover:text-[#E4C766] hover:bg-emerald-950/60 rounded cursor-pointer transition font-serif"
-              title="خط عريض (Bold)"
+              title="خط عريض (Bold) - حدد جزءاً أولاً"
             >
               B
             </button>
@@ -197,7 +237,7 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
               type="button"
               onClick={() => handleApplyFormat("italic")}
               className="px-1.5 py-0.5 text-[10px] italic text-gray-400 hover:text-[#E4C766] hover:bg-emerald-950/60 rounded cursor-pointer transition font-serif"
-              title="خط مائل (Italic)"
+              title="خط مائل (Italic) - حدد جزءاً أولاً"
             >
               I
             </button>
@@ -205,33 +245,42 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
             <button
               type="button"
               onClick={() => handleApplyFormat("color", "#C9A227")}
-              className="w-2.5 h-2.5 rounded-full bg-[#C9A227] hover:scale-125 transition cursor-pointer"
-              title="لون ذهبي فاخر"
+              className="w-2 rounded-full h-2 bg-[#C9A227] hover:scale-125 transition cursor-pointer"
+              title="تلوين الكلمة المحددة بالذهبي"
             />
             <button
               type="button"
               onClick={() => handleApplyFormat("color", "#FFFFFF")}
-              className="w-2.5 h-2.5 rounded-full bg-white border border-gray-600 hover:scale-125 transition cursor-pointer"
-              title="لون أبيض ناصع"
+              className="w-2 rounded-full h-2 bg-white border border-gray-600 hover:scale-125 transition cursor-pointer"
+              title="تلوين الكلمة المحددة بالأبيض"
             />
             <button
               type="button"
               onClick={() => handleApplyFormat("color", "#38BDF8")}
-              className="w-2.5 h-2.5 rounded-full bg-sky-400 hover:scale-125 transition cursor-pointer"
-              title="لون أزرق سماوي"
+              className="w-2 rounded-full h-2 bg-sky-400 hover:scale-125 transition cursor-pointer"
+              title="تلوين الكلمة المحددة بالأزرق السماوي"
             />
             <button
               type="button"
               onClick={() => handleApplyFormat("color", "#F43F5E")}
-              className="w-2.5 h-2.5 rounded-full bg-rose-500 hover:scale-125 transition cursor-pointer"
-              title="لون أحمر للفت الانتباه"
+              className="w-2 rounded-full h-2 bg-rose-500 hover:scale-125 transition cursor-pointer"
+              title="تلوين الكلمة المحددة بالأحمر"
             />
             <button
               type="button"
               onClick={() => handleApplyFormat("color", "#10B981")}
-              className="w-2.5 h-2.5 rounded-full bg-[#10B981] hover:scale-125 transition cursor-pointer"
-              title="لون أخضر مبهج"
+              className="w-2 rounded-full h-2 bg-[#10B981] hover:scale-125 transition cursor-pointer"
+              title="تلوين الكلمة المحددة بالأخضر"
             />
+            <div className="w-[1px] h-3 bg-amber-500/10 mx-0.5"></div>
+            <button
+              type="button"
+              onClick={() => handleApplyFormat("strip")}
+              className="px-1.5 py-0.5 text-[9px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-950/30 rounded cursor-pointer transition font-sans flex items-center"
+              title="تنظيف وتصفية النص من جميع الأكواد والألوان المخصصة"
+            >
+              🧹 تنظيف
+            </button>
           </div>
         </div>
         <div className="flex gap-2">
@@ -328,7 +377,13 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                  slide.transition === "wipe" ? "مسح خطي مذهب" :
                  slide.transition === "slideLeft" ? "انزلاق لليسار" :
                  slide.transition === "slideRight" ? "انزلاق لليمين" :
+                 slide.transition === "slideUp" ? "انزلاق للأعلى" :
+                 slide.transition === "slideDown" ? "انزلاق للأسفل" :
                  slide.transition === "zoomIn" ? "تقريب وتكبير" :
+                 slide.transition === "zoomOut" ? "تبعيد وتصغير" :
+                 slide.transition === "shutter" ? "شيش وبوابات حركية" :
+                 slide.transition === "glitch" ? "تسريب ضوئي رقمي" :
+                 slide.transition === "flip" ? "انعكاس ثلاثي الأبعاد" :
                  slide.transition === "none" ? "انتقال فوري" : "تلاشي تدريجي"}
               </span>
             </div>
@@ -342,7 +397,13 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
               <option value="wipe">مسح خطي مذهب فاخر (Wipe RTL)</option>
               <option value="slideLeft">انزلاق سينمائي لليسار (Slide Left)</option>
               <option value="slideRight">انزلاق سينمائي لليمين (Slide Right)</option>
-              <option value="zoomIn">تقريب وتكبير عدسة (Zoom In)</option>
+              <option value="slideUp">انزلاق رأسي للأعلى (Slide Up)</option>
+              <option value="slideDown">انزلاق رأسي للأسفل (Slide Down)</option>
+              <option value="zoomIn">تقريب عدسة مرن (Elastic Zoom In)</option>
+              <option value="zoomOut">تبعيد عدسة عريض (Zoom Out Back)</option>
+              <option value="shutter">مسح الستار القطري الشيش (Diagonal Shutter)</option>
+              <option value="glitch">تسريب ضوئي رقمي خاطف (Digital Glitch Leak)</option>
+              <option value="flip">انعكاس بطاقات ثلاثي الأبعاد (3D Perspective Flip)</option>
               <option value="none">انتقال فوري مباشر (Cut / None)</option>
             </select>
             {onUpdateAllSlides && (
@@ -377,6 +438,10 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
             <option value="classic">تلاشي وتحرك عمودي هادئ (Classic Fade-In)</option>
             <option value="zoom">تكبير تدريجي سينمائي (Ken Burns Cinematic Zoom)</option>
             <option value="slideRight">انزلاق سلس من اليمين (Slide Right Entrance)</option>
+            <option value="slideLeft">انزلاق سلس من اليسار (Slide Left Entrance)</option>
+            <option value="fadeOnly">تلاشي نقي بدون إزاحة (Pure Dissolve)</option>
+            <option value="bounce">ظهور ارتدادي نابض (Elastic Bounce)</option>
+            <option value="spring">تأثير زنبرك مرن (Springy Snap)</option>
             <option value="none">بدون حركة داخلية (None / Stable)</option>
           </select>
           <p className="text-[10px] text-gray-500 leading-relaxed font-sans pr-1">
@@ -654,6 +719,8 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                 <option value="cards">بطاقات منفصلة شفافة (Glassmorphic Cards)</option>
                 <option value="bars">أعمدة تقدم أفقية (Horizontal Progress Bars)</option>
                 <option value="pie">مؤشرات دائرية دونت (Radial Circular Indicators)</option>
+                <option value="grid">مؤشرات شبكية ثنائية الأبعاد (2D Dashboard Grid)</option>
+                <option value="kpis">بطاقات مؤشرات الأداء الكبرى (KPI Blocks with Index)</option>
               </select>
               <p className="text-[10px] text-gray-500 leading-relaxed font-sans pr-1">
                 اختر الأسلوب البصري الأكثر ملاءمة للأرقام المعروضة (مثلاً، النمط الدائري أو الأعمدة ممتاز للنسب المئوية ومقارنة الأهداف).

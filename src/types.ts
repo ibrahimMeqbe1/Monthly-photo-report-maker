@@ -10,14 +10,28 @@ export interface MediaItem {
   src: string; // Base64 data or object URL
 }
 
-export type SlideTransition = 'none' | 'fade' | 'slideLeft' | 'slideRight' | 'zoomIn' | 'dissolve' | 'wipe' | 'crossFade';
+export type SlideTransition = 
+  | 'none' 
+  | 'fade' 
+  | 'slideLeft' 
+  | 'slideRight' 
+  | 'slideUp' 
+  | 'slideDown' 
+  | 'zoomIn' 
+  | 'zoomOut' 
+  | 'dissolve' 
+  | 'wipe' 
+  | 'shutter' 
+  | 'glitch' 
+  | 'flip' 
+  | 'crossFade';
 
 export interface BaseSlide {
   id: string;
   type: SlideType;
   duration: number;
   transition?: SlideTransition;
-  animationPreset?: 'classic' | 'zoom' | 'slideRight' | 'none'; // Element-level cinematic motion presets
+  animationPreset?: 'classic' | 'zoom' | 'slideRight' | 'slideLeft' | 'fadeOnly' | 'bounce' | 'spring' | 'none'; // Element-level cinematic motion presets
 }
 
 export interface IntroSlide extends BaseSlide {
@@ -67,7 +81,7 @@ export interface ClosingSlide extends BaseSlide {
   headingSize: number;
   statsSize: number;
   statsOpacity: number;
-  statsStyle?: 'cards' | 'bars' | 'pie'; // Style of stats display (bars, pie charts, or stats cards)
+  statsStyle?: 'cards' | 'bars' | 'pie' | 'grid' | 'kpis'; // Style of stats display (bars, pie charts, stats cards, 2D grid, or KPI blocks)
 }
 
 export type Slide = IntroSlide | SectionSlide | EventSlide | ClosingSlide;
@@ -87,6 +101,33 @@ export interface ThemeColors {
   muted2: string;
   muted3: string;
   swatchCss: string;
+  fontDisplay?: string;
+  fontBody?: string;
 }
 
-export type ThemeName = 'emerald' | 'navy' | 'burgundy' | 'charcoal';
+export type ThemeName = 'emerald' | 'navy' | 'burgundy' | 'charcoal' | 'bronze' | 'turquoise' | 'sandstone' | 'platinum' | 'royalNavy' | 'imperialPurple';
+
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName?: string;
+  plan: 'free' | 'pro' | 'enterprise';
+  exportQuotaLimit: number;
+  exportQuotaCurrent: number;
+  watermarkCustomAllowed: boolean;
+  videoDurationLimit: number; // in seconds
+}
+
+export interface SavedProject {
+  id: string;
+  name: string;
+  slides: Slide[];
+  theme: ThemeName;
+  createdAt: string;
+  updatedAt: string;
+  audioFilename?: string;
+  audioUrl?: string;
+  fontDisplay?: string;
+  fontBody?: string;
+  activeTemplateId?: string | null;
+}

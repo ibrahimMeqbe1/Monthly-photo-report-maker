@@ -1,0 +1,94 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile in HEMA GRAPHIC",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "The unique Firebase Auth user ID"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The professional Gmail address"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User display name"
+        },
+        "plan": {
+          "type": "string",
+          "enum": ["free", "pro", "enterprise"],
+          "description": "The user's current subscription plan"
+        },
+        "exportQuotaLimit": {
+          "type": "integer",
+          "description": "Maximum exports allowed"
+        },
+        "exportQuotaCurrent": {
+          "type": "integer",
+          "description": "Current exports utilized"
+        },
+        "watermarkCustomAllowed": {
+          "type": "boolean",
+          "description": "Whether custom watermarks/logos are allowed"
+        },
+        "videoDurationLimit": {
+          "type": "integer",
+          "description": "Maximum video duration limit in seconds"
+        }
+      },
+      "required": ["uid", "email", "displayName"]
+    },
+    "SavedProject": {
+      "title": "SavedProject",
+      "description": "Saved reports of the user",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "The unique project ID"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the report"
+        },
+        "slides": {
+          "type": "array",
+          "description": "The list of slides composing the report"
+        },
+        "theme": {
+          "type": "string",
+          "description": "Theme name used"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date of last modification"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The ID of the user who owns this project"
+        }
+      },
+      "required": ["id", "name", "slides", "theme", "ownerId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profiles collection"
+    },
+    "/projects/{projectId}": {
+      "schema": "SavedProject",
+      "description": "Saved reports of users"
+    }
+  }
+}

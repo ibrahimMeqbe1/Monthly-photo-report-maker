@@ -59,6 +59,9 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
   watermarkSettings,
   onWatermarkSettingsChange,
 }) => {
+  const fontDisplay = theme.fontDisplay || "Cairo";
+  const fontBody = theme.fontBody || "Tajawal";
+
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   
@@ -217,22 +220,28 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
         pushSegment();
         curItalic = !curItalic;
         i += 1;
-      } else if (text.startsWith("<color=", i)) {
-        pushSegment();
+      } else if (text.toLowerCase().startsWith("<color=", i)) {
         const closeBracket = text.indexOf(">", i);
         if (closeBracket !== -1) {
-          const colorVal = text.substring(i + 7, closeBracket);
+          pushSegment();
+          const colorVal = text.substring(i + 7, closeBracket).trim().replace(/['"]/g, "");
           activeColorStack.push(curColor);
           curColor = colorVal;
           i = closeBracket + 1;
         } else {
-          currentWord += "<";
+          currentWord += text[i];
           i++;
         }
-      } else if (text.startsWith("</color>", i)) {
-        pushSegment();
-        curColor = activeColorStack.pop() || defaultColor;
-        i += 8;
+      } else if (text.toLowerCase().startsWith("</color", i)) {
+        const closeBracket = text.indexOf(">", i);
+        if (closeBracket !== -1) {
+          pushSegment();
+          curColor = activeColorStack.pop() || defaultColor;
+          i = closeBracket + 1;
+        } else {
+          currentWord += text[i];
+          i++;
+        }
       } else {
         currentWord += text[i];
         i++;
@@ -396,22 +405,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.fillRect(0, 0, W, H);
 
     const preset = s.animationPreset || "classic";
-    const ease = 1 - Math.pow(1 - Math.min(1, t / 0.6), 3); // Ease out cubic
-    
-    let dx = 0;
-    let dy = 0;
-    let scale = 1;
-    
-    if (preset === "classic") {
-      dy = (1 - ease) * 26;
-    } else if (preset === "zoom") {
-      scale = 0.95 + 0.05 * ease;
-    } else if (preset === "slideRight") {
-      dx = (1 - ease) * -60;
-    } else if (preset === "none") {
-      dy = 0;
-    }
-
+    const { dx, dy, scale, alpha: ease } = getPresetTransforms(preset, t);
     const logoAlpha = ease * (s.logoOpacity ?? 1);
 
     // Save and apply global cinematic preset translation/scaling to elements
@@ -489,7 +483,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.stroke();
 
       ctx.fillStyle = theme.accent;
-      ctx.font = `900 ${Math.floor(logoSize * 0.32)}px Cairo`;
+      ctx.font = `900 ${Math.floor(logoSize * 0.32)}px ${fontDisplay}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(s.emblemText || "تقرير", 0, 0);
@@ -500,17 +494,17 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.save();
     ctx.globalAlpha = ease * (s.titleOpacity ?? 1);
     ctx.translate(0, dy);
-    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.48, "center", "Tajawal", 22, theme.accentLight, "700");
+    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.48, "center", fontBody, 22, theme.accentLight, "700");
 
     // Main Title
     ctx.fillStyle = theme.sand;
     const titleSize = s.titleSize || 52;
-    ctx.font = `900 ${titleSize}px Cairo`;
+    ctx.font = `900 ${titleSize}px ${fontDisplay}`;
     const lines = wrapLines(ctx, s.mainTitle, W * 0.75);
     const lh = titleSize + 10;
     const startY = H * 0.58 - ((lines.length - 1) * lh) / 2;
     lines.forEach((ln, idx) => {
-      drawRichTextLine(ctx, ln, W / 2, startY + idx * lh, "center", "Cairo", titleSize, theme.sand, "900");
+      drawRichTextLine(ctx, ln, W / 2, startY + idx * lh, "center", fontDisplay, titleSize, theme.sand, "900");
     });
     ctx.restore();
 
@@ -533,7 +527,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Month Badge
     ctx.save();
     ctx.globalAlpha = logoAlpha;
-    ctx.font = "800 19px Tajawal";
+    ctx.font = `800 19px ${fontBody}`;
     const badgeLabel = s.monthBadge || "";
     const cleanBadgeLabel = stripFormatting(badgeLabel);
     const tw = ctx.measureText(cleanBadgeLabel).width;
@@ -569,21 +563,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.fillRect(0, 0, W, H);
 
     const preset = s.animationPreset || "classic";
-    const ease = 1 - Math.pow(1 - Math.min(1, t / 0.6), 3);
-    
-    let dx = 0;
-    let dy = 0;
-    let scale = 1;
-    
-    if (preset === "classic") {
-      dy = (1 - ease) * 22;
-    } else if (preset === "zoom") {
-      scale = 0.95 + 0.05 * ease;
-    } else if (preset === "slideRight") {
-      dx = (1 - ease) * -60;
-    } else if (preset === "none") {
-      dy = 0;
-    }
+    const { dx, dy, scale, alpha: ease } = getPresetTransforms(preset, t);
 
     // Save and apply global cinematic preset translation/scaling to elements
     ctx.save();
@@ -626,14 +606,14 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.fillStyle = theme.sand;
     const titleSize = s.titleSize || 44;
-    ctx.font = `900 ${titleSize}px Cairo`;
+    ctx.font = `900 ${titleSize}px ${fontDisplay}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const lines = wrapLines(ctx, s.stageTitle, W * 0.75);
     const lh = titleSize + 8;
     const startY = H * 0.46 - ((lines.length - 1) * lh) / 2;
     lines.forEach((ln, i) => {
-      drawRichTextLine(ctx, ln, W / 2, startY + i * lh, "center", "Cairo", titleSize, theme.sand, "900");
+      drawRichTextLine(ctx, ln, W / 2, startY + i * lh, "center", fontDisplay, titleSize, theme.sand, "900");
     });
     ctx.restore();
 
@@ -642,13 +622,13 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease * (s.subtitleOpacity ?? 1);
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.fillStyle = theme.muted3;
-    ctx.font = "400 19px Tajawal";
+    ctx.font = `400 19px ${fontBody}`;
     ctx.textAlign = "center";
     const subLines = wrapLines(ctx, s.stageSubtitle, W * 0.65);
     const subLh = 28;
     const subStartY = H * 0.65;
     subLines.forEach((ln, i) => {
-      drawRichTextLine(ctx, ln, W / 2, subStartY + i * subLh, "center", "Tajawal", 19, theme.muted3, "400");
+      drawRichTextLine(ctx, ln, W / 2, subStartY + i * subLh, "center", fontBody, 19, theme.muted3, "400");
     });
     ctx.restore();
 
@@ -695,7 +675,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.setLineDash([]);
 
       ctx.fillStyle = hexToRgba(theme.sand, 0.35);
-      ctx.font = "500 18px Tajawal";
+      ctx.font = `500 18px ${fontBody}`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("قم برفع صورة أو فيديو توثيقي للفعالية من لوحة التعديل", W / 2, H / 2);
@@ -725,14 +705,14 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Text Day
     ctx.setLineDash([]);
     ctx.fillStyle = theme.accentLight;
-    ctx.font = "900 32px Cairo";
+    ctx.font = `900 32px ${fontDisplay}`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(s.day || "٠١", dx + dw / 2, dy + dh / 2 - 8);
 
     // Text Month
     ctx.fillStyle = theme.sand;
-    ctx.font = "700 14px Tajawal";
+    ctx.font = `700 14px ${fontBody}`;
     ctx.fillText(s.month || "", dx + dw / 2, dy + dh / 2 + 22);
     ctx.restore();
 
@@ -748,22 +728,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
     // Text reveal transition
     const preset = s.animationPreset || "classic";
-    const textEase = 1 - Math.pow(1 - Math.min(1, t / 0.6), 3);
+    const { dx: animOffsetX, dy: animOffsetY, scale, alpha: textEase } = getPresetTransforms(preset, t);
     const textAlpha = textEase * (s.textOpacity ?? 1);
-
-    let animOffsetX = 0;
-    let animOffsetY = 0;
-    let scale = 1;
-
-    if (preset === "classic") {
-      animOffsetY = (1 - textEase) * 20;
-    } else if (preset === "zoom") {
-      scale = 0.95 + 0.05 * textEase;
-    } else if (preset === "slideRight") {
-      animOffsetX = (1 - textEase) * -60;
-    } else if (preset === "none") {
-      animOffsetY = 0;
-    }
 
     const marginX = 50;
     let cy = H - 180;
@@ -782,7 +748,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
     // 1. Category Tag with Golden vertical line
     ctx.textBaseline = "top";
-    drawRichTextLine(ctx, s.catLabel || "", W - marginX - 16, cy, "right", "Tajawal", 16, theme.accent, "800");
+    drawRichTextLine(ctx, s.catLabel || "", W - marginX - 16, cy, "right", fontBody, 16, theme.accent, "800");
 
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 3.5;
@@ -796,18 +762,18 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // 2. Activity Title
     const textSize = s.textSize || 30;
     ctx.fillStyle = theme.sand;
-    ctx.font = `900 ${textSize}px Cairo`;
+    ctx.font = `900 ${textSize}px ${fontDisplay}`;
     const lines = wrapLines(ctx, s.title, W - marginX * 2);
     const lh = textSize + 10;
     lines.forEach((ln) => {
-      drawRichTextLine(ctx, ln, W - marginX, cy, "right", "Cairo", textSize, theme.sand, "900");
+      drawRichTextLine(ctx, ln, W - marginX, cy, "right", fontDisplay, textSize, theme.sand, "900");
       cy += lh;
     });
 
     cy += 4;
 
     // 3. Location Description
-    drawRichTextLine(ctx, s.location || "", W - marginX, cy, "right", "Tajawal", 17, theme.muted3, "300");
+    drawRichTextLine(ctx, s.location || "", W - marginX, cy, "right", fontBody, 17, theme.muted3, "300");
 
     ctx.restore();
   };
@@ -821,21 +787,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.fillRect(0, 0, W, H);
 
     const preset = s.animationPreset || "classic";
-    const ease = 1 - Math.pow(1 - Math.min(1, t / 0.6), 3);
-    
-    let dx = 0;
-    let dy = 0;
-    let scale = 1;
-    
-    if (preset === "classic") {
-      dy = (1 - ease) * 24;
-    } else if (preset === "zoom") {
-      scale = 0.95 + 0.05 * ease;
-    } else if (preset === "slideRight") {
-      dx = (1 - ease) * -60;
-    } else if (preset === "none") {
-      dy = 0;
-    }
+    const { dx, dy, scale, alpha: ease } = getPresetTransforms(preset, t);
 
     // Global save for preset animation
     ctx.save();
@@ -854,7 +806,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.translate(0, 0); // dy handled globally
     ctx.textBaseline = "middle";
     const headingSize = s.headingSize || 32;
-    drawRichTextLine(ctx, s.heading || "", W / 2, H * 0.32, "center", "Cairo", headingSize, theme.accentLight, "900");
+    drawRichTextLine(ctx, s.heading || "", W / 2, H * 0.32, "center", fontDisplay, headingSize, theme.accentLight, "900");
     ctx.restore();
 
     // Statistics Layout
@@ -868,8 +820,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     const statsStyle = s.statsStyle || "cards";
 
     if (statsStyle === "bars") {
-      // Vertical progress bars
-      const rowH = 55;
+      // Horizontal progressive bar rows - Stacking label on top right, value on top left, and bar on bottom
+      const rowH = 72;
       const totalH = stats.length * rowH;
       const startY = H * 0.44 - (totalH / 2) + 20;
 
@@ -898,25 +850,23 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
           }
         }
 
-        // Draw Row items:
-        // 1. Label on the right
-        drawRichTextLine(ctx, st.l || "", W / 2 + 100, cy, "right", "Tajawal", 15.5, theme.accentLight, "600");
+        // Draw stacked items:
+        // A. Label on top-right (starts at W/2 + 250, goes left)
+        drawRichTextLine(ctx, st.l || "", W / 2 + 250, cy - 12, "right", fontBody, 16, theme.accentLight, "600");
 
-        // 2. Value on the left
-        ctx.fillStyle = theme.sand;
-        ctx.font = `900 24px Cairo`;
-        ctx.textAlign = "left";
+        // B. Value on top-left (starts at W/2 - 250, goes right)
         ctx.textBaseline = "middle";
-        ctx.fillText(displayNum, W / 2 - 300, cy);
+        drawRichTextLine(ctx, displayNum, W / 2 - 250, cy - 12, "left", fontDisplay, 21, theme.sand, "900");
 
-        // 3. Progress Bar Track in the middle (between W/2 - 240 and W/2 + 80)
-        const bx = W / 2 - 240;
-        const bw = 320;
-        const bh = 10;
-        const by = cy - bh / 2;
+        // C. Progress Bar centered below
+        const bx = W / 2 - 250;
+        const bw = 500;
+        const bh = 8;
+        const by = cy + 10;
 
+        // Bar Track
         ctx.fillStyle = hexToRgba(theme.accent, 0.15);
-        roundRect(ctx, bx, by, bw, bh, 5);
+        roundRect(ctx, bx, by, bw, bh, 4);
         ctx.fill();
 
         // Active Bar Fill with golden gradient
@@ -926,7 +876,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
           barG.addColorStop(0, theme.accent);
           barG.addColorStop(1, theme.accentLight);
           ctx.fillStyle = barG;
-          roundRect(ctx, bx, by, fillW, bh, 5);
+          roundRect(ctx, bx, by, fillW, bh, 4);
           ctx.fill();
         }
 
@@ -982,17 +932,123 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
         }
 
         // 3. Draw text value inside the ring
-        ctx.fillStyle = theme.sand;
-        const innerFontSize = Math.floor(statsSize * 0.65);
-        ctx.font = `900 ${innerFontSize}px Cairo`;
-        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(displayNum, cx, cy + 1.5);
+        const innerFontSize = Math.floor(statsSize * 0.65);
+        drawRichTextLine(ctx, displayNum, cx, cy + 1.5, "center", "Cairo", innerFontSize, theme.sand, "900");
 
         // 4. Draw label below
         const lblLines = wrapLines(ctx, st.l || "", cellW - 20);
         lblLines.forEach((ln, lIdx) => {
           drawRichTextLine(ctx, ln, cx, H * 0.61 + lIdx * 20, "center", "Tajawal", 15.5, theme.accentLight, "600");
+        });
+
+        ctx.restore();
+      });
+    } else if (statsStyle === "grid") {
+      // 2x2 Grid Layout for modern bento look
+      const gridW = 320;
+      const gridH = 90;
+      const gapX = 30;
+      const gapY = 20;
+
+      stats.forEach((st: any, i: number) => {
+        const row = Math.floor(i / 2);
+        const col = i % 2; // 0 = right/first column, 1 = left/second column
+
+        // Calculate center of each grid item
+        const cx = col === 0 ? (W / 2 + (gridW + gapX) / 2) : (W / 2 - (gridW + gapX) / 2);
+        const cy = H * 0.43 + row * (gridH + gapY);
+
+        const localEase = 1 - Math.pow(1 - Math.min(1, Math.max(0, t - 0.15 * i) / 0.5), 3);
+        const a = localEase * statsAlpha;
+        const sdy = (1 - localEase) * 12;
+
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.translate(0, sdy);
+
+        // Background card
+        ctx.fillStyle = hexToRgba(theme.bgDark1, 0.45);
+        ctx.strokeStyle = hexToRgba(theme.accent, 0.18);
+        ctx.lineWidth = 1.5;
+        roundRect(ctx, cx - gridW / 2, cy - gridH / 2, gridW, gridH, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        // Right vertical indicator line in the card
+        ctx.fillStyle = theme.accent;
+        roundRect(ctx, cx + gridW / 2 - 6, cy - gridH / 2 + 10, 4, gridH - 20, 2);
+        ctx.fill();
+
+        // Animate counting
+        const parsed = parseStatNumber(st.n);
+        let displayNum = st.n || "";
+        if (parsed) {
+          const countRatio = Math.min(1, Math.max(0, t - 0.12 * i) / 1.5);
+          const currentVal = parsed.value * countRatio;
+          displayNum = formatStatValue(parsed, currentVal);
+        }
+
+        // Draw Value
+        ctx.textBaseline = "middle";
+        drawRichTextLine(ctx, displayNum, cx + gridW / 2 - 24, cy - 14, "right", "Cairo", 24, theme.sand, "900");
+
+        // Draw Label
+        const maxTextW = gridW - 40;
+        const lblLines = wrapLines(ctx, st.l || "", maxTextW);
+        lblLines.forEach((ln, lIdx) => {
+          drawRichTextLine(ctx, ln, cx + gridW / 2 - 24, cy + 16 + lIdx * 18, "right", "Tajawal", 14.5, theme.accentLight, "600");
+        });
+
+        ctx.restore();
+      });
+    } else if (statsStyle === "kpis") {
+      // Big KPI blocks with massive translucent indexes in the background
+      stats.forEach((st: any, i: number) => {
+        const cx = startX + i * cellW + cellW / 2;
+        const localEase = 1 - Math.pow(1 - Math.min(1, Math.max(0, t - 0.15 * i) / 0.5), 3);
+        const a = localEase * statsAlpha;
+        const sdy = (1 - localEase) * 16;
+
+        ctx.save();
+        ctx.globalAlpha = a;
+        ctx.translate(0, sdy);
+
+        // Simple elegant frame with subtle top-border
+        ctx.fillStyle = hexToRgba(theme.accent, 0.04);
+        roundRect(ctx, cx - cellW / 2 + 8, H * 0.40, cellW - 16, 170, 8);
+        ctx.fill();
+
+        // Top accent line
+        ctx.fillStyle = theme.accent;
+        roundRect(ctx, cx - cellW / 2 + 18, H * 0.40, cellW - 36, 3, 1.5);
+        ctx.fill();
+
+        // Translucent background index (e.g. 01, 02, 03)
+        const indexStr = `0${i + 1}`;
+        ctx.fillStyle = hexToRgba(theme.accent, 0.08);
+        ctx.font = `900 70px ${fontDisplay}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText(indexStr, cx, H * 0.48);
+
+        // Animate Value
+        const parsed = parseStatNumber(st.n);
+        let displayNum = st.n || "";
+        if (parsed) {
+          const countRatio = Math.min(1, Math.max(0, t - 0.12 * i) / 1.5);
+          const currentVal = parsed.value * countRatio;
+          displayNum = formatStatValue(parsed, currentVal);
+        }
+
+        // Draw Value
+        ctx.textBaseline = "middle";
+        drawRichTextLine(ctx, displayNum, cx, H * 0.53, "center", fontDisplay, statsSize + 4, theme.sand, "900");
+
+        // Draw Label
+        const lblLines = wrapLines(ctx, st.l || "", cellW - 24);
+        lblLines.forEach((ln, lIdx) => {
+          drawRichTextLine(ctx, ln, cx, H * 0.62 + lIdx * 19, "center", fontBody, 15, theme.accentLight, "700");
         });
 
         ctx.restore();
@@ -1028,16 +1084,13 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
         }
 
         // Stat Value
-        ctx.fillStyle = theme.sand;
-        ctx.font = `900 ${statsSize}px Cairo`;
-        ctx.textAlign = "center";
         ctx.textBaseline = "middle";
-        ctx.fillText(displayNum, cx, H * 0.52);
+        drawRichTextLine(ctx, displayNum, cx, H * 0.52, "center", fontDisplay, statsSize, theme.sand, "900");
 
         // Stat Label
         const lblLines = wrapLines(ctx, st.l || "", cellW - 20);
         lblLines.forEach((ln, lIdx) => {
-          drawRichTextLine(ctx, ln, cx, H * 0.60 + lIdx * 20, "center", "Tajawal", 16, theme.accentLight, "600");
+          drawRichTextLine(ctx, ln, cx, H * 0.60 + lIdx * 20, "center", fontBody, 16, theme.accentLight, "600");
         });
 
         ctx.restore();
@@ -1062,10 +1115,64 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease;
     ctx.translate(0, 0); // dy handled globally
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.79, "center", "Tajawal", 15.5, theme.muted, "400");
+    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.79, "center", fontBody, 15.5, theme.muted, "400");
     ctx.restore();
 
     ctx.restore(); // restores the global preset translation context
+  };
+
+  // Advanced Kinematic Easing and Animation Preset Resolvers
+  const getPresetTransforms = (preset: string, t: number) => {
+    const animT = Math.min(1, t / 0.6);
+    const easeOutCubic = 1 - Math.pow(1 - animT, 3);
+    const easeOutBack = 1 + 2.70158 * Math.pow(animT - 1, 3) + 1.70158 * Math.pow(animT - 1, 2);
+    const easeOutElastic = animT === 0 ? 0 : animT === 1 ? 1 : Math.pow(2, -10 * animT) * Math.sin((animT * 10 - 0.75) * ((2 * Math.PI) / 3)) + 1;
+    
+    let dx = 0;
+    let dy = 0;
+    let scale = 1;
+    let alpha = animT;
+
+    if (preset === "classic") {
+      dy = (1 - easeOutCubic) * 26;
+      alpha = easeOutCubic;
+    } else if (preset === "zoom") {
+      scale = 0.94 + 0.06 * easeOutCubic;
+      alpha = easeOutCubic;
+    } else if (preset === "slideRight") {
+      dx = (1 - easeOutCubic) * -60;
+      alpha = easeOutCubic;
+    } else if (preset === "slideLeft") {
+      dx = (1 - easeOutCubic) * 60;
+      alpha = easeOutCubic;
+    } else if (preset === "fadeOnly") {
+      alpha = easeOutCubic;
+    } else if (preset === "bounce") {
+      scale = 0.85 + 0.15 * easeOutElastic;
+      alpha = Math.min(1, animT * 1.5);
+    } else if (preset === "spring") {
+      dy = (1 - easeOutBack) * 35;
+      scale = 0.95 + 0.05 * easeOutBack;
+      alpha = Math.min(1, animT * 1.2);
+    } else if (preset === "none") {
+      alpha = 1;
+    }
+
+    return { dx, dy, scale, alpha };
+  };
+
+  const easeInOutCubic = (t: number): number => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+
+  const easeOutBack = (t: number): number => {
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+  };
+
+  const easeInOutQuad = (t: number): number => {
+    return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
   };
 
   const drawSingleSlideFrame = (
@@ -1117,41 +1224,61 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
           drawSingleSlideFrame(nextCtx, currentSlide, localT, W, H);
 
           ctx.clearRect(0, 0, W, H);
+          
           if (transitionType === "fade") {
-            if (progress < 0.5) {
+            const eased = easeInOutQuad(progress);
+            if (eased < 0.5) {
               ctx.save();
-              ctx.globalAlpha = 1 - progress * 2;
+              ctx.globalAlpha = 1 - eased * 2;
               ctx.drawImage(prevCanvas, 0, 0);
               ctx.restore();
             } else {
               ctx.save();
-              ctx.globalAlpha = (progress - 0.5) * 2;
+              ctx.globalAlpha = (eased - 0.5) * 2;
               ctx.drawImage(nextCanvas, 0, 0);
               ctx.restore();
             }
           } else if (transitionType === "crossFade" || transitionType === "dissolve") {
+            const eased = easeInOutCubic(progress);
             ctx.save();
-            ctx.globalAlpha = 1 - progress;
+            ctx.globalAlpha = 1 - eased;
             ctx.drawImage(prevCanvas, 0, 0);
-            ctx.globalAlpha = progress;
+            ctx.globalAlpha = eased;
             ctx.drawImage(nextCanvas, 0, 0);
             ctx.restore();
           } else if (transitionType === "slideLeft") {
             ctx.save();
-            const shiftX = progress * W;
+            const eased = easeInOutCubic(progress);
+            const shiftX = eased * W;
             ctx.drawImage(prevCanvas, -shiftX, 0);
             ctx.drawImage(nextCanvas, W - shiftX, 0);
             ctx.restore();
           } else if (transitionType === "slideRight") {
             ctx.save();
-            const shiftX = progress * W;
+            const eased = easeInOutCubic(progress);
+            const shiftX = eased * W;
             ctx.drawImage(prevCanvas, shiftX, 0);
             ctx.drawImage(nextCanvas, -W + shiftX, 0);
             ctx.restore();
+          } else if (transitionType === "slideUp") {
+            ctx.save();
+            const eased = easeInOutCubic(progress);
+            const shiftY = eased * H;
+            ctx.drawImage(prevCanvas, 0, -shiftY);
+            ctx.drawImage(nextCanvas, 0, H - shiftY);
+            ctx.restore();
+          } else if (transitionType === "slideDown") {
+            ctx.save();
+            const eased = easeInOutCubic(progress);
+            const shiftY = eased * H;
+            ctx.drawImage(prevCanvas, 0, shiftY);
+            ctx.drawImage(nextCanvas, 0, -H + shiftY);
+            ctx.restore();
           } else if (transitionType === "wipe") {
             ctx.save();
+            const eased = easeInOutQuad(progress);
             ctx.drawImage(prevCanvas, 0, 0);
-            const wipeX = W * (1 - progress);
+            const wipeX = W * (1 - eased);
             ctx.beginPath();
             ctx.rect(wipeX, 0, W - wipeX, H);
             ctx.clip();
@@ -1165,9 +1292,95 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
             ctx.fillStyle = theme.accent;
             ctx.fillRect(wipeX - 2, 0, 4, H);
             ctx.restore();
+          } else if (transitionType === "shutter") {
+            ctx.save();
+            const eased = easeInOutCubic(progress);
+            ctx.drawImage(prevCanvas, 0, 0);
+            
+            // Diagonal Sweep Mask
+            ctx.beginPath();
+            ctx.moveTo(0, H);
+            ctx.lineTo(W * eased, 0);
+            ctx.lineTo(W, 0);
+            ctx.lineTo(W, H * eased);
+            ctx.closePath();
+            ctx.clip();
+            ctx.drawImage(nextCanvas, 0, 0);
+            ctx.restore();
+
+            // Neon glowing divider bar
+            ctx.save();
+            ctx.strokeStyle = theme.accent;
+            ctx.lineWidth = 6;
+            ctx.shadowColor = theme.accent;
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.moveTo(0, H - H * eased);
+            ctx.lineTo(W * eased, 0);
+            ctx.stroke();
+            ctx.restore();
+          } else if (transitionType === "glitch") {
+            ctx.save();
+            if (progress < 0.4) {
+              ctx.drawImage(prevCanvas, 0, 0);
+              if (Math.random() < 0.3) {
+                const sliceY = Math.random() * H;
+                const sliceH = 40 + Math.random() * 80;
+                const shift = -30 + Math.random() * 60;
+                ctx.drawImage(prevCanvas, 0, sliceY, W, sliceH, shift, sliceY, W, sliceH);
+              }
+            } else if (progress > 0.6) {
+              ctx.drawImage(nextCanvas, 0, 0);
+              if (Math.random() < 0.3) {
+                const sliceY = Math.random() * H;
+                const sliceH = 40 + Math.random() * 80;
+                const shift = -30 + Math.random() * 60;
+                ctx.drawImage(nextCanvas, 0, sliceY, W, sliceH, shift, sliceY, W, sliceH);
+              }
+            } else {
+              // RGB Splitting Chromatic Aberration
+              ctx.globalAlpha = 0.5;
+              ctx.drawImage(prevCanvas, -12, 0);
+              ctx.globalAlpha = 0.5;
+              ctx.drawImage(nextCanvas, 12, 0);
+              
+              ctx.fillStyle = theme.accent;
+              ctx.globalAlpha = 0.22;
+              ctx.fillRect(0, H * 0.4, W, 25);
+            }
+            // Ambient light pulse
+            if (progress > 0.35 && progress < 0.65) {
+              ctx.save();
+              ctx.fillStyle = `rgba(255, 255, 255, ${0.28 - Math.abs(progress - 0.5)})`;
+              ctx.fillRect(0, 0, W, H);
+              ctx.restore();
+            }
+            ctx.restore();
+          } else if (transitionType === "flip") {
+            ctx.save();
+            const eased = easeInOutCubic(progress);
+            if (eased < 0.5) {
+              const scaleX = 1 - eased * 2;
+              ctx.translate(W / 2, H / 2);
+              ctx.scale(scaleX, 1 - eased * 0.08);
+              ctx.drawImage(prevCanvas, -W / 2, -H / 2);
+              
+              ctx.fillStyle = `rgba(0, 0, 0, ${eased * 0.6})`;
+              ctx.fillRect(-W/2, -H/2, W, H);
+            } else {
+              const scaleX = (eased - 0.5) * 2;
+              ctx.translate(W / 2, H / 2);
+              ctx.scale(scaleX, 0.96 + (eased - 0.5) * 0.08);
+              ctx.drawImage(nextCanvas, -W / 2, -H / 2);
+
+              ctx.fillStyle = `rgba(255, 255, 255, ${(1 - eased) * 0.4})`;
+              ctx.fillRect(-W/2, -H/2, W, H);
+            }
+            ctx.restore();
           } else if (transitionType === "zoomIn") {
             ctx.save();
-            const prevScale = 1 + progress * 0.15;
+            const eased = easeOutBack(progress);
+            const prevScale = 1 + eased * 0.12;
             const prevAlpha = Math.max(0, 1 - progress);
             ctx.globalAlpha = prevAlpha;
             ctx.translate(W / 2, H / 2);
@@ -1176,7 +1389,26 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
             ctx.restore();
 
             ctx.save();
-            const nextScale = 0.85 + progress * 0.15;
+            const nextScale = 0.88 + eased * 0.12;
+            const nextAlpha = progress;
+            ctx.globalAlpha = nextAlpha;
+            ctx.translate(W / 2, H / 2);
+            ctx.scale(nextScale, nextScale);
+            ctx.drawImage(nextCanvas, -W / 2, -H / 2);
+            ctx.restore();
+          } else if (transitionType === "zoomOut") {
+            ctx.save();
+            const eased = easeInOutCubic(progress);
+            const prevScale = 1 - eased * 0.12;
+            const prevAlpha = Math.max(0, 1 - progress);
+            ctx.globalAlpha = prevAlpha;
+            ctx.translate(W / 2, H / 2);
+            ctx.scale(prevScale, prevScale);
+            ctx.drawImage(prevCanvas, -W / 2, -H / 2);
+            ctx.restore();
+
+            ctx.save();
+            const nextScale = 1.12 - eased * 0.12;
             const nextAlpha = progress;
             ctx.globalAlpha = nextAlpha;
             ctx.translate(W / 2, H / 2);
@@ -1253,7 +1485,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     }
 
     // Default watermark text and flag
-    ctx.font = "bold 13px Tajawal, sans-serif";
+    ctx.font = `bold 13px ${fontBody}, sans-serif`;
     
     const text = "وزارة الاقتصاد الوطني — دولة فلسطين";
     const textWidth = ctx.measureText(text).width;
