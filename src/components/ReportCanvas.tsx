@@ -26,6 +26,8 @@ interface ReportCanvasProps {
     src: string | null;
     position: "bottom-right" | "bottom-left" | "top-right" | "top-left";
   }) => void;
+  fontDisplay: string;
+  fontBody: string;
 }
 
 const BUILTIN_TRACKS = [
@@ -58,9 +60,9 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
   onUpdateGlobalAudio,
   watermarkSettings,
   onWatermarkSettingsChange,
+  fontDisplay,
+  fontBody,
 }) => {
-  const fontDisplay = theme.fontDisplay || "Cairo";
-  const fontBody = theme.fontBody || "Tajawal";
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -140,6 +142,42 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       setCurrentTime(acc);
     }
   }, [activeSlideIndex, isPlaying]);
+
+  // Preload all Arabic fonts and weights on mount to ensure instant canvas rendering
+  useEffect(() => {
+    if (document.fonts) {
+      const fontsToLoad = [
+        "Cairo",
+        "Tajawal",
+        "Almarai",
+        "Alexandria",
+        "Amiri",
+        "Readex Pro",
+        "El Messiri"
+      ];
+      const weights = ["400", "500", "600", "700", "800", "900"];
+      const promises: Promise<any>[] = [];
+      
+      fontsToLoad.forEach(font => {
+        weights.forEach(weight => {
+          promises.push(document.fonts.load(`${weight} 12px "${font}"`));
+        });
+      });
+
+      Promise.all(promises)
+        .then(() => {
+          triggerRerender();
+        })
+        .catch(err => {
+          console.warn("Some fonts failed to preload, proceeding with fallbacks", err);
+        });
+    }
+  }, []);
+
+  // Handle immediate rerender on font selection changes
+  useEffect(() => {
+    triggerRerender();
+  }, [fontDisplay, fontBody]);
 
   // Resolve Image element and cache it
   const getCachedImage = (id: string, src: string): HTMLImageElement | null => {
@@ -269,7 +307,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.save();
       const weight = seg.bold ? "900" : fontWeight;
       const style = seg.italic ? "italic" : "normal";
-      ctx.font = `${style} ${weight} ${baseFontSize}px ${baseFontName}`;
+      ctx.font = `${style} ${weight} ${baseFontSize}px "${baseFontName}"`;
       const width = ctx.measureText(seg.text).width;
       ctx.restore();
       return { seg, width };
@@ -297,7 +335,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.save();
       const weight = seg.bold ? "900" : fontWeight;
       const style = seg.italic ? "italic" : "normal";
-      ctx.font = `${style} ${weight} ${baseFontSize}px ${baseFontName}`;
+      ctx.font = `${style} ${weight} ${baseFontSize}px "${baseFontName}"`;
       ctx.fillStyle = seg.color;
 
       const drawX = currentRightX - width;
@@ -483,7 +521,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.stroke();
 
       ctx.fillStyle = theme.accent;
-      ctx.font = `900 ${Math.floor(logoSize * 0.32)}px ${fontDisplay}`;
+      ctx.font = `900 ${Math.floor(logoSize * 0.32)}px "${fontDisplay}"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(s.emblemText || "تقرير", 0, 0);
@@ -499,7 +537,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Main Title
     ctx.fillStyle = theme.sand;
     const titleSize = s.titleSize || 52;
-    ctx.font = `900 ${titleSize}px ${fontDisplay}`;
+    ctx.font = `900 ${titleSize}px "${fontDisplay}"`;
     const lines = wrapLines(ctx, s.mainTitle, W * 0.75);
     const lh = titleSize + 10;
     const startY = H * 0.58 - ((lines.length - 1) * lh) / 2;
@@ -527,7 +565,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Month Badge
     ctx.save();
     ctx.globalAlpha = logoAlpha;
-    ctx.font = `800 19px ${fontBody}`;
+    ctx.font = `800 19px "${fontBody}"`;
     const badgeLabel = s.monthBadge || "";
     const cleanBadgeLabel = stripFormatting(badgeLabel);
     const tw = ctx.measureText(cleanBadgeLabel).width;
@@ -542,7 +580,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.fill();
 
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, badgeLabel, W / 2, by + bh / 2 + 1, "center", "Tajawal", 19, theme.ink, "800");
+    drawRichTextLine(ctx, badgeLabel, W / 2, by + bh / 2 + 1, "center", fontBody, 19, theme.ink, "800");
     ctx.restore(); // restores Month Badge context
     ctx.restore(); // restores global elements translation context
   };
@@ -581,7 +619,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease * 0.85;
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, s.stageNumber || "", W / 2, H * 0.28, "center", "Cairo", 32, theme.accent, "900");
+    drawRichTextLine(ctx, s.stageNumber || "", W / 2, H * 0.28, "center", fontDisplay, 32, theme.accent, "900");
     ctx.restore();
 
     // Divider Line
@@ -606,7 +644,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.fillStyle = theme.sand;
     const titleSize = s.titleSize || 44;
-    ctx.font = `900 ${titleSize}px ${fontDisplay}`;
+    ctx.font = `900 ${titleSize}px "${fontDisplay}"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     const lines = wrapLines(ctx, s.stageTitle, W * 0.75);
@@ -622,7 +660,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease * (s.subtitleOpacity ?? 1);
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.fillStyle = theme.muted3;
-    ctx.font = `400 19px ${fontBody}`;
+    ctx.font = `400 19px "${fontBody}"`;
     ctx.textAlign = "center";
     const subLines = wrapLines(ctx, s.stageSubtitle, W * 0.65);
     const subLh = 28;
@@ -675,7 +713,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.setLineDash([]);
 
       ctx.fillStyle = hexToRgba(theme.sand, 0.35);
-      ctx.font = `500 18px ${fontBody}`;
+      ctx.font = `500 18px "${fontBody}"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText("قم برفع صورة أو فيديو توثيقي للفعالية من لوحة التعديل", W / 2, H / 2);
@@ -705,14 +743,14 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Text Day
     ctx.setLineDash([]);
     ctx.fillStyle = theme.accentLight;
-    ctx.font = `900 32px ${fontDisplay}`;
+    ctx.font = `900 32px "${fontDisplay}"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(s.day || "٠١", dx + dw / 2, dy + dh / 2 - 8);
 
     // Text Month
     ctx.fillStyle = theme.sand;
-    ctx.font = `700 14px ${fontBody}`;
+    ctx.font = `700 14px "${fontBody}"`;
     ctx.fillText(s.month || "", dx + dw / 2, dy + dh / 2 + 22);
     ctx.restore();
 
@@ -762,7 +800,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // 2. Activity Title
     const textSize = s.textSize || 30;
     ctx.fillStyle = theme.sand;
-    ctx.font = `900 ${textSize}px ${fontDisplay}`;
+    ctx.font = `900 ${textSize}px "${fontDisplay}"`;
     const lines = wrapLines(ctx, s.title, W - marginX * 2);
     const lh = textSize + 10;
     lines.forEach((ln) => {
@@ -934,12 +972,12 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
         // 3. Draw text value inside the ring
         ctx.textBaseline = "middle";
         const innerFontSize = Math.floor(statsSize * 0.65);
-        drawRichTextLine(ctx, displayNum, cx, cy + 1.5, "center", "Cairo", innerFontSize, theme.sand, "900");
+        drawRichTextLine(ctx, displayNum, cx, cy + 1.5, "center", fontDisplay, innerFontSize, theme.sand, "900");
 
         // 4. Draw label below
         const lblLines = wrapLines(ctx, st.l || "", cellW - 20);
         lblLines.forEach((ln, lIdx) => {
-          drawRichTextLine(ctx, ln, cx, H * 0.61 + lIdx * 20, "center", "Tajawal", 15.5, theme.accentLight, "600");
+          drawRichTextLine(ctx, ln, cx, H * 0.61 + lIdx * 20, "center", fontBody, 15.5, theme.accentLight, "600");
         });
 
         ctx.restore();
@@ -991,13 +1029,13 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
         // Draw Value
         ctx.textBaseline = "middle";
-        drawRichTextLine(ctx, displayNum, cx + gridW / 2 - 24, cy - 14, "right", "Cairo", 24, theme.sand, "900");
+        drawRichTextLine(ctx, displayNum, cx + gridW / 2 - 24, cy - 14, "right", fontDisplay, 24, theme.sand, "900");
 
         // Draw Label
         const maxTextW = gridW - 40;
         const lblLines = wrapLines(ctx, st.l || "", maxTextW);
         lblLines.forEach((ln, lIdx) => {
-          drawRichTextLine(ctx, ln, cx + gridW / 2 - 24, cy + 16 + lIdx * 18, "right", "Tajawal", 14.5, theme.accentLight, "600");
+          drawRichTextLine(ctx, ln, cx + gridW / 2 - 24, cy + 16 + lIdx * 18, "right", fontBody, 14.5, theme.accentLight, "600");
         });
 
         ctx.restore();
@@ -1027,7 +1065,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
         // Translucent background index (e.g. 01, 02, 03)
         const indexStr = `0${i + 1}`;
         ctx.fillStyle = hexToRgba(theme.accent, 0.08);
-        ctx.font = `900 70px ${fontDisplay}`;
+        ctx.font = `900 70px "${fontDisplay}"`;
         ctx.textAlign = "center";
         ctx.textBaseline = "middle";
         ctx.fillText(indexStr, cx, H * 0.48);
@@ -1485,7 +1523,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     }
 
     // Default watermark text and flag
-    ctx.font = `bold 13px ${fontBody}, sans-serif`;
+    ctx.font = `bold 13px "${fontBody}", sans-serif`;
     
     const text = "وزارة الاقتصاد الوطني — دولة فلسطين";
     const textWidth = ctx.measureText(text).width;
@@ -1764,6 +1802,21 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     const H = canvas.height;
     const ctx = canvas.getContext("2d")!;
 
+    // Ensure custom web fonts are fully loaded prior to recording start frames
+    if (document.fonts) {
+      setExportStatusText("جاري تحميل وتهيئة خطوط العرض...");
+      try {
+        await Promise.all([
+          document.fonts.load(`900 12px ${fontDisplay}`),
+          document.fonts.load(`400 12px ${fontBody}`),
+          document.fonts.load(`800 12px ${fontDisplay}`),
+          document.fonts.load(`700 12px ${fontBody}`),
+        ]);
+      } catch (e) {
+        console.warn("Fonts loading failed, proceeding with fallback", e);
+      }
+    }
+
     // 30 FPS high fidelity output stream
     const stream = canvas.captureStream(30);
 
@@ -1890,6 +1943,30 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
   return (
     <div className="flex flex-col items-center gap-4 w-full">
+      {/* Hidden DOM elements to force loading and applying all Arabic fonts and weights on startup */}
+      <div 
+        aria-hidden="true"
+        style={{ 
+          position: "absolute", 
+          opacity: 0, 
+          pointerEvents: "none", 
+          zIndex: -9999, 
+          height: 0, 
+          width: 0, 
+          overflow: "hidden" 
+        }}
+      >
+        {["Cairo", "Tajawal", "Almarai", "Alexandria", "Amiri", "Readex Pro", "El Messiri"].map((family) => (
+          <div key={family}>
+            {[400, 500, 600, 700, 800, 900].map((weight) => (
+              <span key={weight} style={{ fontFamily: `"${family}"`, fontWeight: weight }}>
+                تحميل {family} {weight}
+              </span>
+            ))}
+          </div>
+        ))}
+      </div>
+
       {/* HTML5 HD Canvas Rendering stage */}
       <div className="relative w-full max-w-[720px] aspect-video border border-amber-500/20 bg-black rounded-xl overflow-hidden shadow-[0_25px_60px_-15px_rgba(0,0,0,0.85)]">
         <canvas

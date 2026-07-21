@@ -830,6 +830,8 @@ export default function App() {
             onUpdateGlobalAudio={setGlobalAudio}
             watermarkSettings={watermarkSettings}
             onWatermarkSettingsChange={setWatermarkSettings}
+            fontDisplay={fontDisplay}
+            fontBody={fontBody}
           />
 
           {/* Quick instructions hints */}
