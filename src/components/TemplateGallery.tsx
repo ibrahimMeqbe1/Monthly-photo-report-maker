@@ -13,6 +13,8 @@ interface TemplateGalleryProps {
   onFontDisplayChange: (font: string) => void;
   fontBody: string;
   onFontBodyChange: (font: string) => void;
+  isGuest?: boolean;
+  onRequireLogin?: (message?: string) => void;
 }
 
 const ARABIC_FONTS = [
@@ -34,6 +36,8 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
   onFontDisplayChange,
   fontBody,
   onFontBodyChange,
+  isGuest = false,
+  onRequireLogin,
 }) => {
   const [activeTab, setActiveTab] = useState<"templates" | "colors" | "fonts">("templates");
 
@@ -98,7 +102,15 @@ export const TemplateGallery: React.FC<TemplateGalleryProps> = ({
             return (
               <div
                 key={tpl.id}
-                onClick={() => onSelectTemplate(tpl)}
+                onClick={() => {
+                  if (isGuest) {
+                    if (onRequireLogin) {
+                      onRequireLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتطبيق واستخدام هذا القالب المتكامل.");
+                    }
+                    return;
+                  }
+                  onSelectTemplate(tpl);
+                }}
                 className={`relative flex flex-col gap-2 p-3.5 rounded-xl border transition-all duration-300 text-right cursor-pointer select-none group ${
                   isActive
                     ? "border-[#C9A227] bg-gradient-to-br from-emerald-950/50 to-emerald-900/10 shadow-[0_0_20px_rgba(201,162,39,0.12)]"

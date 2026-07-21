@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Slide, StatItem, MediaItem } from "../types";
-import { Sparkles, Loader2, Upload, Trash2, Plus, Sliders, PlaySquare } from "lucide-react";
+import { Sparkles, Loader2, Upload, Trash2, Plus, Sliders, PlaySquare, ShieldAlert } from "lucide-react";
 
 interface SlideEditorProps {
   slide: Slide;
@@ -11,6 +11,8 @@ interface SlideEditorProps {
   onAddToMediaLibrary: (item: { src: string; type: "image" | "video"; name?: string }) => void;
   onRemoveFromMediaLibrary: (index: number) => void;
   onClearMediaLibrary: () => void;
+  isGuest?: boolean;
+  onRequireLogin?: () => void;
 }
 
 export const SlideEditor: React.FC<SlideEditorProps> = ({
@@ -22,11 +24,19 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
   onAddToMediaLibrary,
   onRemoveFromMediaLibrary,
   onClearMediaLibrary,
+  isGuest = false,
+  onRequireLogin,
 }) => {
   const [refiningField, setRefiningField] = useState<string | null>(null);
   const [refineTone, setRefineTone] = useState("official");
 
   const updateField = (key: string, val: any) => {
+    if (isGuest) {
+      if (onRequireLogin) {
+        onRequireLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لتعديل نصوص وحجوم عناصر الشريحة.");
+      }
+      return;
+    }
     onUpdateSlide({
       ...slide,
       [key]: val,
@@ -38,6 +48,12 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
     currentText: string,
     onRefineComplete?: (refined: string) => void
   ) => {
+    if (isGuest) {
+      if (onRequireLogin) {
+        onRequireLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لاستخدام أداة الصياغة التلقائية الذكية.");
+      }
+      return;
+    }
     if (!currentText || !currentText.trim()) return;
     setRefiningField(fieldKey);
     try {
@@ -312,6 +328,21 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
 
   return (
     <div className="bg-[#152820] border border-amber-500/10 rounded-xl p-5 shadow-lg flex flex-col gap-4">
+      {isGuest && (
+        <div className="bg-amber-950/40 border border-amber-500/30 p-3 rounded-xl flex items-center justify-between gap-2 text-xs text-amber-200">
+          <div className="flex items-center gap-2">
+            <ShieldAlert className="w-4 h-4 text-[#C9A227] shrink-0" />
+            <span>وضع المعاينة كزائر. يرجى تسجيل الدخول لتعديل النصوص وتصدير الفيديو.</span>
+          </div>
+          <button
+            onClick={() => onRequireLogin && onRequireLogin("🔒 يرجى تسجيل الدخول بواسطة حساب Google لتعديل الشرائح وتصنيع التقرير.")}
+            className="shrink-0 bg-[#C9A227] hover:bg-[#b08d1f] text-[#0A2C21] font-bold px-2.5 py-1 rounded-lg text-[11px] transition shadow-sm cursor-pointer"
+          >
+            تسجيل الدخول
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 border-r-2 border-[#C9A227] pr-2.5">
         <Sliders className="w-4 h-4 text-[#E4C766]" />
         <h3 className="font-display text-sm font-bold text-[#E4C766]">لوحة تعديل الشريحة</h3>
@@ -540,6 +571,12 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
               />
             </div>
 
+            {/* 📐 أحجام الخطوط */}
+            <h4 className="text-[11px] font-sans font-bold text-[#E4C766] mb-3 mt-4 flex items-center gap-1 border-t border-amber-500/5 pt-3">
+              <Sliders className="w-3.5 h-3.5 text-[#C9A227]" />
+              <span>تعديل أحجام الخطوط في الشريحة</span>
+            </h4>
+
             <div className="flex flex-col gap-1.5 mb-3">
               <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
                 <span>حجم العنوان الرئيسي:</span>
@@ -554,6 +591,53 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                 className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
               />
             </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم اسم المؤسسة/الوزارة:</span>
+                <span className="text-[#E4C766]">{slide.ministrySize || 22}px</span>
+              </div>
+              <input
+                type="range"
+                min={14}
+                max={40}
+                value={slide.ministrySize || 22}
+                onChange={(e) => updateField("ministrySize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم شارة الشهر/السنة:</span>
+                <span className="text-[#E4C766]">{slide.badgeSize || 19}px</span>
+              </div>
+              <input
+                type="range"
+                min={12}
+                max={32}
+                value={slide.badgeSize || 19}
+                onChange={(e) => updateField("badgeSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            {!slide.logoData && (
+              <div className="flex flex-col gap-1.5 mb-3">
+                <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                  <span>حجم الأحرف البديلة للشعار:</span>
+                  <span className="text-[#E4C766]">{slide.emblemSize || Math.floor(slide.logoSize * 0.32)}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={15}
+                  max={60}
+                  value={slide.emblemSize || Math.floor(slide.logoSize * 0.32)}
+                  onChange={(e) => updateField("emblemSize", parseInt(e.target.value, 10))}
+                  className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+                />
+              </div>
+            )}
           </>
         )}
 
@@ -564,7 +648,13 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
             {renderTextInputWithRefiner("عنوان المرحلة", "stageTitle", slide.stageTitle)}
             {renderTextInputWithRefiner("شرح أو وصف فرعي موجز", "stageSubtitle", slide.stageSubtitle)}
 
-            <div className="flex flex-col gap-1.5 mb-3 mt-4">
+            {/* 📐 أحجام الخطوط */}
+            <h4 className="text-[11px] font-sans font-bold text-[#E4C766] mb-3 mt-4 flex items-center gap-1 border-t border-amber-500/5 pt-3">
+              <Sliders className="w-3.5 h-3.5 text-[#C9A227]" />
+              <span>تعديل أحجام الخطوط في الشريحة</span>
+            </h4>
+
+            <div className="flex flex-col gap-1.5 mb-3">
               <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
                 <span>حجم خط العنوان:</span>
                 <span className="text-[#E4C766]">{slide.titleSize}px</span>
@@ -575,6 +665,36 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                 max={70}
                 value={slide.titleSize}
                 onChange={(e) => updateField("titleSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم خط رقم المحور/القسم:</span>
+                <span className="text-[#E4C766]">{slide.stageNumberSize || 32}px</span>
+              </div>
+              <input
+                type="range"
+                min={20}
+                max={60}
+                value={slide.stageNumberSize || 32}
+                onChange={(e) => updateField("stageNumberSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم خط الشرح/الوصف:</span>
+                <span className="text-[#E4C766]">{slide.stageSubtitleSize || 19}px</span>
+              </div>
+              <input
+                type="range"
+                min={12}
+                max={30}
+                value={slide.stageSubtitleSize || 19}
+                onChange={(e) => updateField("stageSubtitleSize", parseInt(e.target.value, 10))}
                 className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
               />
             </div>
@@ -682,9 +802,15 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
               </div>
             )}
 
+            {/* 📐 أحجام الخطوط */}
+            <h4 className="text-[11px] font-sans font-bold text-[#E4C766] mb-3 mt-4 flex items-center gap-1 border-t border-amber-500/5 pt-3">
+              <Sliders className="w-3.5 h-3.5 text-[#C9A227]" />
+              <span>تعديل أحجام الخطوط في الشريحة</span>
+            </h4>
+
             <div className="flex flex-col gap-1.5 mb-3">
               <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
-                <span>حجم خط العناوين:</span>
+                <span>حجم عنوان النشاط/الفعالية:</span>
                 <span className="text-[#E4C766]">{slide.textSize}px</span>
               </div>
               <input
@@ -695,6 +821,68 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                 onChange={(e) => updateField("textSize", parseInt(e.target.value, 10))}
                 className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
               />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم تصنيف النشاط:</span>
+                <span className="text-[#E4C766]">{slide.catLabelSize || 16}px</span>
+              </div>
+              <input
+                type="range"
+                min={11}
+                max={26}
+                value={slide.catLabelSize || 16}
+                onChange={(e) => updateField("catLabelSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم خط الموقع/الميدان:</span>
+                <span className="text-[#E4C766]">{slide.locationSize || 17}px</span>
+              </div>
+              <input
+                type="range"
+                min={12}
+                max={28}
+                value={slide.locationSize || 17}
+                onChange={(e) => updateField("locationSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3 mb-3">
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                  <span>حجم اليوم:</span>
+                  <span className="text-[#E4C766]">{slide.daySize || 32}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={20}
+                  max={55}
+                  value={slide.daySize || 32}
+                  onChange={(e) => updateField("daySize", parseInt(e.target.value, 10))}
+                  className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                  <span>حجم الشهر:</span>
+                  <span className="text-[#E4C766]">{slide.monthSize || 14}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={24}
+                  value={slide.monthSize || 14}
+                  onChange={(e) => updateField("monthSize", parseInt(e.target.value, 10))}
+                  className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+                />
+              </div>
             </div>
           </>
         )}
@@ -776,7 +964,28 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5 mb-3 mt-4">
+            {/* 📐 أحجام الخطوط */}
+            <h4 className="text-[11px] font-sans font-bold text-[#E4C766] mb-3 mt-4 flex items-center gap-1 border-t border-amber-500/5 pt-3">
+              <Sliders className="w-3.5 h-3.5 text-[#C9A227]" />
+              <span>تعديل أحجام الخطوط في الشريحة</span>
+            </h4>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم العنوان الختامي:</span>
+                <span className="text-[#E4C766]">{slide.headingSize}px</span>
+              </div>
+              <input
+                type="range"
+                min={20}
+                max={60}
+                value={slide.headingSize}
+                onChange={(e) => updateField("headingSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
               <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
                 <span>حجم الأرقام الإحصائية:</span>
                 <span className="text-[#E4C766]">{slide.statsSize}px</span>
@@ -787,6 +996,22 @@ export const SlideEditor: React.FC<SlideEditorProps> = ({
                 max={70}
                 value={slide.statsSize}
                 onChange={(e) => updateField("statsSize", parseInt(e.target.value, 10))}
+                className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
+              />
+            </div>
+
+            <div className="flex flex-col gap-1.5 mb-3">
+              <div className="flex justify-between text-xs font-mono text-gray-400 select-none">
+                <span>حجم التوقيع الختامي:</span>
+                <span className="text-[#E4C766]">{slide.ministrySize || 15.5}px</span>
+              </div>
+              <input
+                type="range"
+                min={11}
+                max={28}
+                step={0.5}
+                value={slide.ministrySize || 15.5}
+                onChange={(e) => updateField("ministrySize", parseFloat(e.target.value))}
                 className="h-1 bg-emerald-950 rounded-lg appearance-none cursor-pointer accent-[#C9A227]"
               />
             </div>

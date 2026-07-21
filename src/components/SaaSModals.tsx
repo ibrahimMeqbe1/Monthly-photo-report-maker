@@ -25,6 +25,8 @@ interface SaaSModalsProps {
   setShowProjects: (show: boolean) => void;
   showAuth: boolean;
   setShowAuth: (show: boolean) => void;
+  authNotice?: string | null;
+  setAuthNotice?: (msg: string | null) => void;
 }
 
 export const SaaSModals: React.FC<SaaSModalsProps> = ({
@@ -39,7 +41,9 @@ export const SaaSModals: React.FC<SaaSModalsProps> = ({
   showProjects,
   setShowProjects,
   showAuth,
-  setShowAuth
+  setShowAuth,
+  authNotice = null,
+  setAuthNotice
 }) => {
   // Save Project Name state
   const [newProjectName, setNewProjectName] = useState("");
@@ -150,31 +154,28 @@ export const SaaSModals: React.FC<SaaSModalsProps> = ({
 
   // Safe Logout handler
   const handleLogout = async () => {
-    if (window.confirm("هل أنت متأكد من رغبتك في تسجيل الخروج من حسابك؟")) {
-      setIsProcessingAuth(true);
-      try {
-        await logoutUser();
-      } catch (err) {
-        console.error("Firebase logout error:", err);
-      }
-      
-      // Reset to guest user with PRO unlocked limits (as requested, removing limitations)
-      const defaultUser: UserProfile = {
-        uid: "guest_user",
-        email: "demo-user@hemagraphic.ps",
-        displayName: "مستخدم تجريبي",
-        plan: "pro", // Fully unlocked
-        exportQuotaLimit: 9999,
-        exportQuotaCurrent: 2,
-        watermarkCustomAllowed: true,
-        videoDurationLimit: 600,
-      };
-      
-      setUser(defaultUser);
-      localStorage.setItem("hema_saas_user", JSON.stringify(defaultUser));
-      setIsProcessingAuth(false);
-      alert("تم تسجيل الخروج بنجاح. يمكنك الاستمرار في العمل بالوضع الكامل المفتوح.");
+    setIsProcessingAuth(true);
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error("Firebase logout error:", err);
     }
+    
+    // Reset to guest user with PRO unlocked limits (as requested, removing limitations)
+    const defaultUser: UserProfile = {
+      uid: "guest_user",
+      email: "demo-user@hemagraphic.ps",
+      displayName: "مستخدم تجريبي",
+      plan: "pro", // Fully unlocked
+      exportQuotaLimit: 9999,
+      exportQuotaCurrent: 2,
+      watermarkCustomAllowed: true,
+      videoDurationLimit: 600,
+    };
+    
+    setUser(defaultUser);
+    localStorage.setItem("hema_saas_user", JSON.stringify(defaultUser));
+    setIsProcessingAuth(false);
   };
 
   const handleSaveSubmit = (e: React.FormEvent) => {
@@ -310,7 +311,10 @@ export const SaaSModals: React.FC<SaaSModalsProps> = ({
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-amber-500/10 pb-4 mb-5">
               <button 
-                onClick={() => setShowAuth(false)}
+                onClick={() => {
+                  setShowAuth(false);
+                  if (setAuthNotice) setAuthNotice(null);
+                }}
                 className="text-gray-400 hover:text-white bg-[#0e1f18] p-1.5 rounded-lg border border-amber-500/5 cursor-pointer text-xs"
               >
                 إغلاق النافذة
@@ -320,6 +324,13 @@ export const SaaSModals: React.FC<SaaSModalsProps> = ({
                 <span>تسجيل الدخول السحابي بواسطة Google</span>
               </h2>
             </div>
+
+            {authNotice && (
+              <div className="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl text-right text-[11px] text-amber-200 font-sans leading-relaxed mb-4 flex items-start gap-2">
+                <ShieldAlert className="w-4 h-4 text-[#C9A227] shrink-0 mt-0.5" />
+                <span>{authNotice}</span>
+              </div>
+            )}
 
             <p className="text-[11px] text-gray-300 leading-relaxed mb-6 font-sans">
               قم بربط حسابك لحفظ كافة التقارير والرسومات البيانية بشكل آمن على منصة Firebase السحابية، ومزامنتها للعمل التشاركي.

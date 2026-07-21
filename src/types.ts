@@ -47,6 +47,9 @@ export interface IntroSlide extends BaseSlide {
   glowIntensity: number;
   titleSize: number;
   titleOpacity: number;
+  ministrySize?: number;
+  badgeSize?: number;
+  emblemSize?: number;
 }
 
 export interface SectionSlide extends BaseSlide {
@@ -56,6 +59,8 @@ export interface SectionSlide extends BaseSlide {
   stageSubtitle: string;
   titleSize: number;
   subtitleOpacity: number;
+  stageNumberSize?: number;
+  stageSubtitleSize?: number;
 }
 
 export interface EventSlide extends BaseSlide {
@@ -71,6 +76,10 @@ export interface EventSlide extends BaseSlide {
   kenBurnsIntensity: number;
   textSize: number;
   textOpacity: number;
+  daySize?: number;
+  monthSize?: number;
+  catLabelSize?: number;
+  locationSize?: number;
 }
 
 export interface ClosingSlide extends BaseSlide {
@@ -82,6 +91,7 @@ export interface ClosingSlide extends BaseSlide {
   statsSize: number;
   statsOpacity: number;
   statsStyle?: 'cards' | 'bars' | 'pie' | 'grid' | 'kpis'; // Style of stats display (bars, pie charts, stats cards, 2D grid, or KPI blocks)
+  ministrySize?: number;
 }
 
 export type Slide = IntroSlide | SectionSlide | EventSlide | ClosingSlide;

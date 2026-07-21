@@ -253,6 +253,7 @@ export default function App() {
   const [showUpgrade, setShowUpgrade] = useState(false);
   const [showProjects, setShowProjects] = useState(false);
   const [showAuth, setShowAuth] = useState(false);
+  const [authNotice, setAuthNotice] = useState<string | null>(null);
 
   // Auto-sync saved projects to localStorage
   useEffect(() => {
@@ -331,7 +332,17 @@ export default function App() {
     setActiveIndex(index);
   };
 
+  // Guard helper to force Google Login before adding any element
+  const requireGoogleLogin = (message: string) => {
+    setAuthNotice(message);
+    setShowAuth(true);
+  };
+
   const handleAddSlide = (type: SlideType) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لإضافة سلايدات جديدة للتقرير.");
+      return;
+    }
     let newSlide: Slide;
 
     switch (type) {
@@ -405,6 +416,10 @@ export default function App() {
   };
 
   const handleDeleteSlide = (index: number) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لحذف الشرائح من التقرير.");
+      return;
+    }
     if (slides.length <= 1) {
       alert("يجب أن يحتوي التقرير على شريحة واحدة على الأقل.");
       return;
@@ -417,6 +432,10 @@ export default function App() {
   };
 
   const handleDuplicateSlide = (index: number) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتكرار الشرائح.");
+      return;
+    }
     const s = slides[index];
     const copy: Slide = {
       ...JSON.parse(JSON.stringify(s)),
@@ -429,6 +448,10 @@ export default function App() {
   };
 
   const handleMoveSlide = (index: number, direction: -1 | 1) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لإعادة ترتيب الشرائح.");
+      return;
+    }
     const targetIdx = index + direction;
     if (targetIdx < 0 || targetIdx >= slides.length) return;
 
@@ -442,15 +465,27 @@ export default function App() {
   };
 
   const handleUpdateSlide = (updated: Slide) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لتعديل نصوص وعناصر التقرير.");
+      return;
+    }
     setSlides((prev) => prev.map((s, idx) => (idx === activeIndex ? updated : s)));
   };
 
   const handleUpdateAllSlides = (updates: Partial<Slide>) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتعديل الإعدادات الشاملة.");
+      return;
+    }
     setSlides((prev) => prev.map((s) => ({ ...s, ...updates })));
   };
 
   // AI slide generator callbacks
   const handleSlidesGenerated = (newSlides: Slide[]) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لاستخدام التوليد التلقائي بالذكاء الاصطناعي.");
+      return;
+    }
     // Merge or replace
     const confirmChoice = window.confirm(
       "تم توليد التقرير بالذكاء الاصطناعي بنجاح! هل ترغب في إضافة السلايدات الجديدة إلى التقرير الحالي؟ (اضغط إلغاء للبدء بتقرير جديد بالكامل)"
@@ -525,6 +560,10 @@ export default function App() {
   };
 
   const handleSaveSaaSProject = async (name: string) => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لحفظ التقرير السحابي بالمستودع.");
+      return;
+    }
     const projectId = "proj_" + Math.random().toString(36).substring(2, 9);
     const newProj: SavedProject = {
       id: projectId,
@@ -574,6 +613,10 @@ export default function App() {
 
   // Project Save & Load Handlers (JSON)
   const handleExportProject = () => {
+    if (user.uid === "guest_user") {
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتصدير وحفظ ملف التقرير JSON.");
+      return;
+    }
     const projectData = {
       theme: currentTheme,
       fontDisplay,
@@ -594,6 +637,11 @@ export default function App() {
   };
 
   const handleImportProject = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (user.uid === "guest_user") {
+      e.preventDefault();
+      requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لاستيراد مشروع تقرير جديد.");
+      return;
+    }
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -759,19 +807,33 @@ export default function App() {
             onSelectTemplate={handleSelectTemplate}
             currentTheme={currentTheme}
             onThemeChange={(themeName) => {
+              if (user.uid === "guest_user") {
+                requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لتغيير الألوان والسمات.");
+                return;
+              }
               setCurrentTheme(themeName);
               setActiveTemplateId(null);
             }}
             fontDisplay={fontDisplay}
             onFontDisplayChange={(font) => {
+              if (user.uid === "guest_user") {
+                requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لتغيير نوع خط العناوين.");
+                return;
+              }
               setFontDisplay(font);
               setActiveTemplateId(null);
             }}
             fontBody={fontBody}
             onFontBodyChange={(font) => {
+              if (user.uid === "guest_user") {
+                requireGoogleLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google أولاً لتغيير خط النصوص.");
+                return;
+              }
               setFontBody(font);
               setActiveTemplateId(null);
             }}
+            isGuest={user.uid === "guest_user"}
+            onRequireLogin={(msg) => requireGoogleLogin(msg || "🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتغيير الهوية القالبية والخطوط.")}
           />
 
           {/* Project File Management Card */}
@@ -832,6 +894,8 @@ export default function App() {
             onWatermarkSettingsChange={setWatermarkSettings}
             fontDisplay={fontDisplay}
             fontBody={fontBody}
+            isGuest={user.uid === "guest_user"}
+            onRequireLogin={(msg) => requireGoogleLogin(msg || "🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتصدير الفيديو وتخصيص الموسيقى والعلامة المائية.")}
           />
 
           {/* Quick instructions hints */}
@@ -867,6 +931,8 @@ export default function App() {
                 onAddToMediaLibrary={handleAddToMediaLibrary}
                 onRemoveFromMediaLibrary={handleRemoveFromMediaLibrary}
                 onClearMediaLibrary={handleClearMediaLibrary}
+                isGuest={user.uid === "guest_user"}
+                onRequireLogin={() => requireGoogleLogin("⚠️ لإضافة عناصر، بطاقات إحصائية، أو وسائط داخل الشريحة، يرجى تسجيل الدخول بواسطة حساب Google أولاً لحفظ التعديلات بصورة آمنة ومستمرة.")}
               />
             </motion.div>
           )}
@@ -970,6 +1036,8 @@ export default function App() {
         setShowProjects={setShowProjects}
         showAuth={showAuth}
         setShowAuth={setShowAuth}
+        authNotice={authNotice}
+        setAuthNotice={setAuthNotice}
       />
     </div>
   );

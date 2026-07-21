@@ -28,6 +28,8 @@ interface ReportCanvasProps {
   }) => void;
   fontDisplay: string;
   fontBody: string;
+  isGuest?: boolean;
+  onRequireLogin?: (message?: string) => void;
 }
 
 const BUILTIN_TRACKS = [
@@ -62,6 +64,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
   onWatermarkSettingsChange,
   fontDisplay,
   fontBody,
+  isGuest = false,
+  onRequireLogin,
 }) => {
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -521,7 +525,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
       ctx.stroke();
 
       ctx.fillStyle = theme.accent;
-      ctx.font = `900 ${Math.floor(logoSize * 0.32)}px "${fontDisplay}"`;
+      const emblemSize = s.emblemSize || Math.floor(logoSize * 0.32);
+      ctx.font = `900 ${emblemSize}px "${fontDisplay}"`;
       ctx.textAlign = "center";
       ctx.textBaseline = "middle";
       ctx.fillText(s.emblemText || "تقرير", 0, 0);
@@ -532,7 +537,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.save();
     ctx.globalAlpha = ease * (s.titleOpacity ?? 1);
     ctx.translate(0, dy);
-    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.48, "center", fontBody, 22, theme.accentLight, "700");
+    const introMinistrySize = s.ministrySize || 22;
+    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.48, "center", fontBody, introMinistrySize, theme.accentLight, "700");
 
     // Main Title
     ctx.fillStyle = theme.sand;
@@ -565,7 +571,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Month Badge
     ctx.save();
     ctx.globalAlpha = logoAlpha;
-    ctx.font = `800 19px "${fontBody}"`;
+    const badgeSize = s.badgeSize || 19;
+    ctx.font = `800 ${badgeSize}px "${fontBody}"`;
     const badgeLabel = s.monthBadge || "";
     const cleanBadgeLabel = stripFormatting(badgeLabel);
     const tw = ctx.measureText(cleanBadgeLabel).width;
@@ -580,7 +587,7 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.fill();
 
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, badgeLabel, W / 2, by + bh / 2 + 1, "center", fontBody, 19, theme.ink, "800");
+    drawRichTextLine(ctx, badgeLabel, W / 2, by + bh / 2 + 1, "center", fontBody, badgeSize, theme.ink, "800");
     ctx.restore(); // restores Month Badge context
     ctx.restore(); // restores global elements translation context
   };
@@ -619,7 +626,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease * 0.85;
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, s.stageNumber || "", W / 2, H * 0.28, "center", fontDisplay, 32, theme.accent, "900");
+    const stageNumberSize = s.stageNumberSize || 32;
+    drawRichTextLine(ctx, s.stageNumber || "", W / 2, H * 0.28, "center", fontDisplay, stageNumberSize, theme.accent, "900");
     ctx.restore();
 
     // Divider Line
@@ -660,13 +668,14 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease * (s.subtitleOpacity ?? 1);
     ctx.translate(0, 0); // dy handled by global preset context
     ctx.fillStyle = theme.muted3;
-    ctx.font = `400 19px "${fontBody}"`;
+    const stageSubtitleSize = s.stageSubtitleSize || 19;
+    ctx.font = `400 ${stageSubtitleSize}px "${fontBody}"`;
     ctx.textAlign = "center";
     const subLines = wrapLines(ctx, s.stageSubtitle, W * 0.65);
     const subLh = 28;
     const subStartY = H * 0.65;
     subLines.forEach((ln, i) => {
-      drawRichTextLine(ctx, ln, W / 2, subStartY + i * subLh, "center", fontBody, 19, theme.muted3, "400");
+      drawRichTextLine(ctx, ln, W / 2, subStartY + i * subLh, "center", fontBody, stageSubtitleSize, theme.muted3, "400");
     });
     ctx.restore();
 
@@ -743,14 +752,16 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     // Text Day
     ctx.setLineDash([]);
     ctx.fillStyle = theme.accentLight;
-    ctx.font = `900 32px "${fontDisplay}"`;
+    const daySize = s.daySize || 32;
+    ctx.font = `900 ${daySize}px "${fontDisplay}"`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(s.day || "٠١", dx + dw / 2, dy + dh / 2 - 8);
 
     // Text Month
     ctx.fillStyle = theme.sand;
-    ctx.font = `700 14px "${fontBody}"`;
+    const monthSize = s.monthSize || 14;
+    ctx.font = `700 ${monthSize}px "${fontBody}"`;
     ctx.fillText(s.month || "", dx + dw / 2, dy + dh / 2 + 22);
     ctx.restore();
 
@@ -786,7 +797,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
     // 1. Category Tag with Golden vertical line
     ctx.textBaseline = "top";
-    drawRichTextLine(ctx, s.catLabel || "", W - marginX - 16, cy, "right", fontBody, 16, theme.accent, "800");
+    const catLabelSize = s.catLabelSize || 16;
+    drawRichTextLine(ctx, s.catLabel || "", W - marginX - 16, cy, "right", fontBody, catLabelSize, theme.accent, "800");
 
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 3.5;
@@ -811,7 +823,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     cy += 4;
 
     // 3. Location Description
-    drawRichTextLine(ctx, s.location || "", W - marginX, cy, "right", fontBody, 17, theme.muted3, "300");
+    const locationSize = s.locationSize || 17;
+    drawRichTextLine(ctx, s.location || "", W - marginX, cy, "right", fontBody, locationSize, theme.muted3, "300");
 
     ctx.restore();
   };
@@ -1153,7 +1166,8 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
     ctx.globalAlpha = ease;
     ctx.translate(0, 0); // dy handled globally
     ctx.textBaseline = "middle";
-    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.79, "center", fontBody, 15.5, theme.muted, "400");
+    const closingMinistrySize = s.ministrySize || 15.5;
+    drawRichTextLine(ctx, s.ministryName || "", W / 2, H * 0.79, "center", fontBody, closingMinistrySize, theme.muted, "400");
     ctx.restore();
 
     ctx.restore(); // restores the global preset translation context
@@ -1771,6 +1785,14 @@ export const ReportCanvas: React.FC<ReportCanvasProps> = ({
 
   /* ================= EXPORT SYSTEM ================= */
   const exportVideo = async () => {
+    if (isGuest) {
+      if (onRequireLogin) {
+        onRequireLogin("🔒 ميزة مقيدة: يرجى تسجيل الدخول بواسطة حساب Google لتصدير الفيديو عالي الدقة (1080p/720p).");
+      } else {
+        alert("🔒 يرجى تسجيل الدخول بواسطة حساب Google لتصدير الفيديو.");
+      }
+      return;
+    }
     const canvas = canvasRef.current;
     if (!canvas || !canvas.captureStream) {
       alert("متصفحك لا يدعم تصدير الفيديو المباشر من الـ Canvas. يرجى استخدام متصفح Chrome أو Edge.");
