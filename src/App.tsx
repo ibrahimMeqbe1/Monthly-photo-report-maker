@@ -4,7 +4,6 @@ import { Slide, SlideType, ThemeName, UserProfile, SavedProject } from "./types"
 import { THEMES } from "./utils/themes";
 import { ReportCanvas } from "./components/ReportCanvas";
 import { SlideList } from "./components/SlideList";
-import { ThemeSelector } from "./components/ThemeSelector";
 import { TemplateGallery } from "./components/TemplateGallery";
 import { ReportTemplate } from "./utils/templates";
 import { SlideEditor } from "./components/SlideEditor";
@@ -758,12 +757,19 @@ export default function App() {
           <TemplateGallery
             activeTemplateId={activeTemplateId}
             onSelectTemplate={handleSelectTemplate}
-          />
-
-          <ThemeSelector
             currentTheme={currentTheme}
             onThemeChange={(themeName) => {
               setCurrentTheme(themeName);
+              setActiveTemplateId(null);
+            }}
+            fontDisplay={fontDisplay}
+            onFontDisplayChange={(font) => {
+              setFontDisplay(font);
+              setActiveTemplateId(null);
+            }}
+            fontBody={fontBody}
+            onFontBodyChange={(font) => {
+              setFontBody(font);
               setActiveTemplateId(null);
             }}
           />

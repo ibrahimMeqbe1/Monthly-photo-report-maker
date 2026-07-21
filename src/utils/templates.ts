@@ -166,5 +166,71 @@ export const TEMPLATES: ReportTemplate[] = [
     layoutScheme: "traditional",
     accentColor: "#E4C766",
     badgeText: "رئاسي وقور ⚜️"
+  },
+  {
+    id: "ancient-palestine-olive",
+    name: "الريادة الفلسطينية العريقة",
+    description: "نمط زيتي فاخر مستوحى من أشجار الزيتون في فلسطين يعتمد خط Amiri المخطوط وخط Tajawal الدافئ لتوثيق الإنجازات الوطنية والتراث الأصيل بلمسة برائحة الوطن.",
+    theme: "olive",
+    fontDisplay: "Amiri",
+    fontBody: "Tajawal",
+    layoutScheme: "traditional",
+    accentColor: "#D4AF37",
+    badgeText: "هوية وأصالة 🇵🇸"
+  },
+  {
+    id: "diplomatic-ruby-imperial",
+    name: "الياقوت الدبلوماسي الرفيع",
+    description: "توليفة بالغة الجاذبية تجمع عمق اللون الأحمر الياقوتي الفاخر والذهب البراق، مدعومة بخط القاهرة المهيب للتصريحات الوزارية واللقاءات الدبلوماسية العليا.",
+    theme: "ruby",
+    fontDisplay: "Cairo",
+    fontBody: "Almarai",
+    layoutScheme: "classic",
+    accentColor: "#E4C766",
+    badgeText: "دبلوماسي هيبة 👑"
+  },
+  {
+    id: "creative-amber-honey",
+    name: "شعلة الكهرمان الإبداعية",
+    description: "قالب يعكس دفء شمس الكهرمان الإبداعي مع خط المسيري (El Messiri) المنحني بفنية ساحرة، مناسب جداً لعرض الأنشطة الفنية، التوعية والمهرجانات الحيوية.",
+    theme: "amber",
+    fontDisplay: "El Messiri",
+    fontBody: "Tajawal",
+    layoutScheme: "modern",
+    accentColor: "#F59E0B",
+    badgeText: "إبداعي وحيوي ✨"
+  },
+  {
+    id: "precise-academic-slate",
+    name: "الرمادي الأكاديمي الدقيق",
+    description: "تصميم علمي رصين يعتمد تدرجات الأردواز الرمادي البارد والخط الهندسي الحديث (Alexandria)، مثالي لعرض الأبحاث، الميزانيات الدقيقة والتقارير الأكاديمية.",
+    theme: "slate",
+    fontDisplay: "Alexandria",
+    fontBody: "Readex Pro",
+    layoutScheme: "minimal",
+    accentColor: "#38BDF8",
+    badgeText: "علمي تحليلي 🔬"
+  },
+  {
+    id: "sustainable-green-growth",
+    name: "النماء الأخضر المستدام",
+    description: "قالب ينبض بالحيوية والنمو يدمج الأخضر العشبي المعمر بلمسات برتقالية مشرقة، مناسب لمبادرات البيئة، الزراعة الذكية والخطط التنموية الواعدة.",
+    theme: "forest",
+    fontDisplay: "Readex Pro",
+    fontBody: "Tajawal",
+    layoutScheme: "modern",
+    accentColor: "#F59E0B",
+    badgeText: "بيئي وتنمية 🌱"
+  },
+  {
+    id: "technical-ocean-explorer",
+    name: "المستكشف المحيطي التقني",
+    description: "تصميم مستقبلي باللون الأزرق المحيطي العميق والإضاءة السيان الساطعة، مقترن بخط القاهرة الرصين لتقديم تقارير تكنولوجيا المعلومات والابتكار الرقمي المتقدم.",
+    theme: "ocean",
+    fontDisplay: "Cairo",
+    fontBody: "Readex Pro",
+    layoutScheme: "minimal",
+    accentColor: "#06B6D4",
+    badgeText: "تقني رقمي ⚡"
   }
 ];

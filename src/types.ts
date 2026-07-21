@@ -105,7 +105,23 @@ export interface ThemeColors {
   fontBody?: string;
 }
 
-export type ThemeName = 'emerald' | 'navy' | 'burgundy' | 'charcoal' | 'bronze' | 'turquoise' | 'sandstone' | 'platinum' | 'royalNavy' | 'imperialPurple';
+export type ThemeName = 
+  | 'emerald' 
+  | 'navy' 
+  | 'burgundy' 
+  | 'charcoal' 
+  | 'bronze' 
+  | 'turquoise' 
+  | 'sandstone' 
+  | 'platinum' 
+  | 'royalNavy' 
+  | 'imperialPurple'
+  | 'olive'
+  | 'ruby'
+  | 'amber'
+  | 'slate'
+  | 'forest'
+  | 'ocean';
 
 export interface UserProfile {
   uid: string;
