@@ -1,0 +1,6 @@
+{
+  "name": "صانع التقرير الشهري المصوّر",
+  "description": "منصة احترافية تفاعلية لتصميم وإنشاء تقارير شهرية مصورة وتصديرها كفيديو بجودة عالية مع خلفيات موسيقية وتأثيرات حركية ذكية.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
